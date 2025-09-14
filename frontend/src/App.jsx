@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Users, 
   BarChart3, 
@@ -24,6 +24,9 @@ import {
   Phone,
   Mail
 } from 'lucide-react';
+
+import { QRCodeScanner,QRCodeGenerator } from '../verificationSteps/QRCodeGenerator';
+
 
 // Mock Data
 const mockUniversity = {
@@ -473,20 +476,23 @@ const BarChart = ({ data, title }) => {
 };
 
 // QR Code Modal
-const QRModal = ({ isOpen, onClose, onEndSession }) => {
-  const [qrCode, setQrCode] = useState(1);
-  const [timeLeft, setTimeLeft] = useState(300);
+const QRModal = ({ isOpen, onClose, onEndSession, classInfo }) => {
+  const [timeLeft, setTimeLeft] = useState(300); // 5 minutes session time
 
   useEffect(() => {
-    let interval;
-    if (isOpen) {
-      interval = setInterval(() => {
-        setQrCode(prev => prev + 1);
-        setTimeLeft(prev => prev > 0 ? prev - 1 : 300);
-      }, 5000);
+    if (!isOpen) {
+      setTimeLeft(300);
+      return;
     }
-    return () => clearInterval(interval);
-  }, [isOpen]);
+    if (timeLeft === 0) {
+      onEndSession();
+      return;
+    }
+    const timerId = setInterval(() => {
+      setTimeLeft((prevTime) => prevTime - 1);
+    }, 1000);
+    return () => clearInterval(timerId);
+  }, [isOpen, timeLeft, onEndSession]);
 
   if (!isOpen) return null;
 
@@ -499,16 +505,11 @@ const QRModal = ({ isOpen, onClose, onEndSession }) => {
         <h2 className="text-2xl font-bold text-center mb-6">Attendance QR Code</h2>
         
         <div className="flex justify-center mb-6">
-          <div className="w-48 h-48 bg-gray-900 rounded-xl flex items-center justify-center">
-            <div className="text-white text-center">
-              <QrCode className="w-24 h-24 mx-auto mb-2" />
-              <p className="text-sm">Code #{qrCode}</p>
-            </div>
-          </div>
+          <QRCodeGenerator classInfo={classInfo} />
         </div>
 
         <div className="text-center mb-6">
-          <p className="text-gray-600 mb-2">Time remaining: {minutes}:{seconds.toString().padStart(2, '0')}</p>
+          <p className="text-gray-600 mb-2">Session ends in: {minutes}:{seconds.toString().padStart(2, '0')}</p>
           <p className="text-sm text-gray-500">QR code refreshes every 5 seconds</p>
         </div>
 
@@ -532,20 +533,51 @@ const QRModal = ({ isOpen, onClose, onEndSession }) => {
 };
 
 // Check-in Modal for Students
+// Check-in Modal for Students
 const CheckInModal = ({ isOpen, onClose, className }) => {
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [scanError, setScanError] = useState(null);
 
-  const handleNextStep = () => {
+  const advanceStep = useCallback((nextStep) => {
     setIsLoading(true);
+    setScanError(null); // Clear previous errors
     setTimeout(() => {
       setIsLoading(false);
-      setStep(step + 1);
-    }, 2000);
-  };
+      setStep(nextStep);
+    }, 1500); // Simulate network/processing delay
+  }, []);
 
+  const handleScanSuccess = useCallback((data) => {
+    console.log("QR Scan Attempt:", data);
+    try {
+      const qrData = JSON.parse(data);
+      const now = Date.now();
+      
+      // --- VALIDATION LOGIC ---
+      // 1. Check if the subject matches the current class
+      // 2. Check if the timestamp is recent (e.g., within 15 seconds)
+      if (qrData.subject === className && (now - qrData.timestamp < 15000)) {
+        console.log("QR Validation Successful!");
+        advanceStep(3); // Proceed to biometric step
+      } else {
+        console.warn("QR Validation Failed:", {
+            expectedSubject: className,
+            scannedSubject: qrData.subject,
+            isTimestampValid: (now - qrData.timestamp < 15000)
+        });
+        setScanError("Invalid or expired QR code. Please try again.");
+      }
+    } catch (e) {
+      // This catches errors if the scanned QR code is not valid JSON
+      console.error("Error parsing QR data:", e);
+      setScanError("Not a valid class QR code.");
+    }
+  }, [advanceStep, className]);
+  
   const handleClose = () => {
     setStep(1);
+    setScanError(null);
     onClose();
   };
 
@@ -555,26 +587,34 @@ const CheckInModal = ({ isOpen, onClose, className }) => {
     {
       title: "Location Verification",
       icon: Navigation,
-      content: "Verifying your location...",
-      action: "Verify Location"
+      content: <p className="text-center text-gray-600">Verifying your location to ensure you are on campus.</p>,
+      actionText: "Verify Location",
+      action: () => advanceStep(2),
     },
     {
       title: "QR Code Scanning",
       icon: QrCode,
-      content: "Scanning QR code...",
-      action: "Scan QR"
+      content: (
+          <div>
+            <QRCodeScanner onScanSuccess={handleScanSuccess} onScanError={(err) => setScanError("Could not start camera.")} />
+            {scanError && <p className="text-red-500 text-center mt-3 text-sm font-semibold">{scanError}</p>}
+          </div>
+      ),
+      actionText: null, // No button needed, scanning is automatic
     },
     {
       title: "Biometric Verification",
       icon: Fingerprint,
-      content: "Please verify your biometric data...",
-      action: "Verify Biometric"
+      content: <p className="text-center text-gray-600">Please verify your identity using the device's biometric sensor.</p>,
+      actionText: "Verify Biometric",
+      action: () => advanceStep(4),
     },
     {
       title: "Success",
       icon: CheckCircle,
-      content: "You are marked present!",
-      action: "Complete"
+      content: <p className="text-center text-green-700">You have been successfully marked present!</p>,
+      actionText: "Complete",
+      action: handleClose,
     }
   ];
 
@@ -582,51 +622,46 @@ const CheckInModal = ({ isOpen, onClose, className }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-8 rounded-2xl max-w-md w-full mx-4">
+      <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full mx-4 transform transition-all">
         <h2 className="text-2xl font-bold text-center mb-2">Check-in: {className}</h2>
         <p className="text-center text-gray-600 mb-6">Step {step} of {steps.length}</p>
 
-        <div className="flex justify-center mb-6">
-          <div className={`w-24 h-24 rounded-full flex items-center justify-center ${
-            step === 4 ? 'bg-green-100' : colors.lightTeal
-          }`}>
-            <currentStep.icon className={`w-12 h-12 ${
-              step === 4 ? 'text-green-600' : colors.primaryBlueText
-            }`} />
-          </div>
+        <div className="flex justify-center mb-6 min-h-[120px] items-center">
+            <div className={`w-24 h-24 rounded-full flex items-center justify-center transition-colors duration-300 ${
+              step === 4 ? 'bg-green-100' : colors.lightTeal
+            }`}>
+              <currentStep.icon className={`w-12 h-12 transition-colors duration-300 ${
+                step === 4 ? 'text-green-600' : colors.primaryBlueText
+              }`} />
+            </div>
         </div>
 
         <h3 className="text-lg font-semibold text-center mb-2">{currentStep.title}</h3>
-        <p className="text-center text-gray-600 mb-6">{currentStep.content}</p>
+        <div className="mb-6">{currentStep.content}</div>
 
         {isLoading && (
-          <div className="flex justify-center mb-6">
+          <div className="flex justify-center my-4">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#647FBC]"></div>
           </div>
         )}
 
-        <div className="flex space-x-3">
-          {step < 4 ? (
-            <button
-              onClick={handleNextStep}
-              disabled={isLoading}
-              className={`flex-1 ${colors.primaryBlue} text-white p-3 rounded-lg font-semibold hover:bg-[#5a73a8] transition-colors disabled:opacity-50`}
+        <div className="flex flex-col space-y-3">
+          {currentStep.actionText && !isLoading && (
+             <button
+              onClick={currentStep.action}
+              className={`w-full text-white p-3 rounded-lg font-semibold transition-colors ${
+                step === 4 ? 'bg-green-600 hover:bg-green-700' : `${colors.primaryBlue} hover:bg-[#5a73a8]`
+              }`}
             >
-              {isLoading ? 'Processing...' : currentStep.action}
-            </button>
-          ) : (
-            <button
-              onClick={handleClose}
-              className="flex-1 bg-green-600 text-white p-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
-            >
-              Done
+              {currentStep.actionText}
             </button>
           )}
           
           {step < 4 && (
             <button
               onClick={handleClose}
-              className="flex-1 bg-gray-600 text-white p-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
+              disabled={isLoading}
+              className="w-full bg-gray-200 text-gray-700 p-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
@@ -636,6 +671,7 @@ const CheckInModal = ({ isOpen, onClose, className }) => {
     </div>
   );
 };
+
 
 // Date Navigation Component
 const DateNavigation = ({ currentDate, onDateChange }) => {
@@ -1140,7 +1176,7 @@ const ProfessorDashboard = () => {
   const [attendanceSession, setAttendanceSession] = useState(null);
   const [duplicateFlags, setDuplicateFlags] = useState([]);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [schedule, setSchedule] = useState([]);
+  
   const sidebarItems = [
     { key: 'profile', label: 'Profile', icon: User },
     { key: 'schedule', label: 'Schedule', icon: Calendar },
@@ -1181,6 +1217,22 @@ const ProfessorDashboard = () => {
       program: "B.Tech Computer Science",
       subject: "Machine Learning",
       students: mockStudents["1-C"] || []
+    },
+     {
+      id: 4,
+      className: "Section A",
+      semester: "6th Semester",
+      program: "B.Tech Computer Science",
+      subject: "Algorithms",
+      students: mockStudents["1-A"] || []
+    },
+    {
+      id: 5,
+      className: "Section A",
+      semester: "6th Semester",
+      program: "B.Tech Computer Science",
+      subject: "Database Systems",
+      students: mockStudents["1-A"] || []
     }
   ];
 
@@ -1191,11 +1243,26 @@ const ProfessorDashboard = () => {
 
   const handleEndSession = () => {
     setShowQRModal(false);
-    setDuplicateFlags(['Alex Johnson', 'David Brown']);
-    setAttendanceSession({
-      class: selectedClass,
-      students: selectedClass.students
-    });
+
+    // Find the full class information from `professorClasses` using the subject
+    // from the `selectedClass` state. The schedule item in `selectedClass` 
+    // does not contain the list of students, so we look it up here.
+    const fullClassInfo = professorClasses.find(
+      (p) => p.subject === selectedClass.subject
+    );
+
+    // If the class is found and has a students array, update the session state.
+    if (fullClassInfo && fullClassInfo.students) {
+      setDuplicateFlags(['Alex Johnson', 'David Brown']);
+      setAttendanceSession({
+        class: fullClassInfo,
+        students: fullClassInfo.students,
+      });
+    } else {
+      // Log an error if the class details couldn't be found, to help with debugging.
+      console.error("Error: Could not find student list for the selected class.", selectedClass);
+      setAttendanceSession(null); // Clear session to prevent further errors
+    }
   };
 
   const getTodaysSchedule = () => {
@@ -1243,7 +1310,7 @@ const ProfessorDashboard = () => {
   );
 
   const renderSchedule = () => {
-    const todaysSchedule = getTodaysSchedule();
+    const todaysSchedule = getTodaysSchedule() || [];
     
     return (
       <div className="p-8">
@@ -1253,25 +1320,31 @@ const ProfessorDashboard = () => {
           <DateNavigation currentDate={currentDate} onDateChange={setCurrentDate} />
           
           <div className="space-y-4">
-            {todaysSchedule.map(cls => (
-              <div key={cls.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div>
-                  <h3 className="font-semibold">{cls.subject}</h3>
-                  <p className="text-sm text-gray-600">{cls.time} • {cls.room}</p>
+            {todaysSchedule.length > 0 ? (
+              todaysSchedule.map(cls => (
+                <div key={cls.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                  <div>
+                    <h3 className="font-semibold">{cls.subject}</h3>
+                    <p className="text-sm text-gray-600">{cls.time} • {cls.room}</p>
+                  </div>
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={() => handleStartQR(cls)}
+                      className={`${colors.primaryBlue} text-white px-4 py-2 rounded-lg font-medium hover:bg-[#5a73a8] transition-colors`}
+                    >
+                      Offline Attendance
+                    </button>
+                    <button className={`${colors.secondaryBlue} text-white px-4 py-2 rounded-lg font-medium hover:bg-[#7d9abd] transition-colors`}>
+                      Online Attendance
+                    </button>
+                  </div>
                 </div>
-                <div className="flex space-x-3">
-                  <button
-                    onClick={() => handleStartQR(cls)}
-                    className={`${colors.primaryBlue} text-white px-4 py-2 rounded-lg font-medium hover:bg-[#5a73a8] transition-colors`}
-                  >
-                    Offline Attendance
-                  </button>
-                  <button className={`${colors.secondaryBlue} text-white px-4 py-2 rounded-lg font-medium hover:bg-[#7d9abd] transition-colors`}>
-                    Online Attendance
-                  </button>
-                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <p>No classes scheduled for this day.</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -1336,10 +1409,13 @@ const ProfessorDashboard = () => {
           isOpen={showQRModal}
           onClose={() => setShowQRModal(false)}
           onEndSession={handleEndSession}
+          classInfo={selectedClass}
         />
       </div>
     );
   };
+
+
 
   const renderAttendance = () => (
     <div className="p-8">
@@ -1596,6 +1672,35 @@ function App() {
   const [userRole, setUserRole] = useState(null);
   const [userEmail, setUserEmail] = useState('');
   const [showSignup, setShowSignup] = useState(false);
+  const [scriptsLoaded, setScriptsLoaded] = useState(false);
+
+  useEffect(() => {
+    const loadScript = (src) => {
+      return new Promise((resolve, reject) => {
+        if (document.querySelector(`script[src="${src}"]`)) {
+            resolve();
+            return;
+        }
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+        document.head.appendChild(script);
+      });
+    };
+
+    Promise.all([
+      loadScript("https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"),
+      loadScript("https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js")
+    ]).then(() => {
+      console.log("All scripts loaded successfully");
+      setScriptsLoaded(true);
+    }).catch(error => {
+      console.error(error);
+      // You could set an error state here to show a message to the user
+    });
+  }, []);
+
 
   const handleLogin = (role, email) => {
     setUserRole(role);
@@ -1612,6 +1717,17 @@ function App() {
   const toggleSignup = () => {
     setShowSignup(!showSignup);
   };
+  
+  if (!scriptsLoaded) {
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-100">
+            <div className="text-center">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#647FBC] mx-auto mb-4"></div>
+                <p className="text-lg text-gray-600">Loading essential components...</p>
+            </div>
+        </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
@@ -1640,3 +1756,4 @@ function App() {
 }
 
 export default App;
+
