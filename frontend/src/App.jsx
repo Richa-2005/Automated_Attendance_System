@@ -24,20 +24,15 @@ import {
   Phone,
   Mail
 } from 'lucide-react';
+import QRCodeScanner from './components/QRCodeGenerator.jsx'; // Assuming it's in the same folder
+import BiometricAuth from './components/BiometricAuth.jsx'; // Assuming it's in the same folder
 
-// --- QR Code Generator Component (No changes needed, this code is correct) ---
-/**
- * A component that generates and displays a QR code that refreshes at a set interval.
- * This component now uses the qrcode.js library, which is loaded dynamically by the main App component.
- * @param {object} props - The component props.
- * @param {object} props.classInfo - Information about the class session to be encoded in the QR code.
- * @param {number} [props.refreshRate=5000] - The refresh rate of the QR code in milliseconds. Defaults to 5 seconds.
- */
-export const QRCodeGenerator = ({ classInfo, refreshRate = 5000 }) => {
+// --- QR Code Generator Component ---
+// This can also be moved to its own file if you like
+const QRCodeGenerator = ({ classInfo, refreshRate = 5000 }) => {
   const [qrValue, setQrValue] = useState('');
   const qrRef = useRef(null);
 
-  // Effect to generate the QR value string
   useEffect(() => {
     const generateQrValue = () => {
       const timestamp = Date.now();
@@ -46,21 +41,16 @@ export const QRCodeGenerator = ({ classInfo, refreshRate = 5000 }) => {
         subject: classInfo?.subject || 'default-subject',
         timestamp: timestamp,
       });
-      console.log(`New QR Value Generated: ${data}`); // For debugging
       setQrValue(data);
     };
-
     generateQrValue();
     const intervalId = setInterval(generateQrValue, refreshRate);
     return () => clearInterval(intervalId);
   }, [classInfo, refreshRate]);
 
-  // Effect to render the QR code using the vanilla JS library
   useEffect(() => {
     if (qrValue && qrRef.current && typeof QRCode !== 'undefined') {
-        // Clear previous QR code before generating a new one
         qrRef.current.innerHTML = '';
-        // Create new QR code
         new QRCode(qrRef.current, {
             text: qrValue,
             width: 192,
@@ -70,110 +60,15 @@ export const QRCodeGenerator = ({ classInfo, refreshRate = 5000 }) => {
             correctLevel : QRCode.CorrectLevel.H
         });
     }
-  }, [qrValue]); // Re-run this effect whenever the qrValue changes
+  }, [qrValue]);
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-inner flex items-center justify-center w-[224px] h-[224px]">
-      <div ref={qrRef}>
-        {!qrValue && (
-            <div className="w-48 h-48 flex items-center justify-center text-gray-500">
-             Generating QR Code...
-            </div>
-        )}
-      </div>
+      <div ref={qrRef} />
     </div>
   );
 };
 
-
-// --- QR Code Scanner Component for Student (CORRECTED FIX) ---
-/**
- * A component to scan QR codes using the device's camera.
- * @param {object} props - The component props.
- * @param {function} props.onScanSuccess - Callback function executed on a successful scan, passing the decoded data.
- * @param {function} props.onScanError - Callback function for handling errors.
- */
-export const QRCodeScanner = ({ onScanSuccess, onScanError }) => {
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const streamRef = useRef(null);
-  const isInitialized = useRef(false);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (isInitialized.current) {
-        return;
-    }
-      
-    if (typeof jsQR === 'undefined') {
-      setError("Scanning library not ready. Please wait.");
-      return;
-    }
-      
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const context = canvas.getContext('2d', { willReadFrequently: true });
-    let animationFrameId = null;
-
-    const tick = () => {
-      if (video && video.readyState === video.HAVE_ENOUGH_DATA) {
-        canvas.height = video.videoHeight;
-        canvas.width = video.videoWidth;
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: "dontInvert",
-        });
-
-        if (code) {
-          onScanSuccess(code.data);
-          return; // Stop scanning after success
-        }
-      }
-      animationFrameId = requestAnimationFrame(tick);
-    };
-
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-      .then(stream => {
-        streamRef.current = stream; 
-        if (video) {
-            video.srcObject = stream;
-            video.setAttribute("playsinline", true);
-            video.play().catch(e => {
-                if (e.name !== 'AbortError') {
-                    console.error("Video play error:", e);
-                }
-            });
-            animationFrameId = requestAnimationFrame(tick);
-        }
-        // Mark as initialized so this block doesn't run again on the Strict Mode re-mount.
-        isInitialized.current = true;
-      })
-      .catch(err => {
-        console.error("Camera access error:", err);
-        setError("Could not access camera. Please check permissions.");
-        if(onScanError) onScanError(err);
-      });
-
-    return () => {
-      // This cleanup function will stop the camera stream when the component is truly unmounted.
-      cancelAnimationFrame(animationFrameId);
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-      // **FIX:** We no longer reset the initialization flag here. This was the source of the bug.
-    };
-  }, [onScanSuccess, onScanError]);
-
-  return (
-    <div className="relative w-full max-w-xs mx-auto aspect-square bg-gray-900 rounded-lg overflow-hidden">
-      <video ref={videoRef} className="w-full h-full object-cover" playsInline />
-      <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full" />
-      <div className="absolute inset-0 border-4 border-dashed border-white/50 rounded-lg"></div>
-      {error && <p className="absolute bottom-2 left-2 right-2 bg-red-800/80 text-white text-xs text-center p-2 rounded">{error}</p>}
-    </div>
-  );
-};
 // Mock Data
 const mockUniversity = {
   name: "Stanford University",
@@ -198,33 +93,9 @@ const mockDepartments = [
 
 const mockFaculty = {
   1: [
-    { 
-      id: 1, 
-      name: "Dr. John Smith", 
-      joined: 2018, 
-      photo: "https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg?auto=compress&cs=tinysrgb&w=150",
-      qualification: "Ph.D. in Computer Science",
-      role: "Associate Professor",
-      subjects: ["Data Structures", "Algorithms", "Database Systems"]
-    },
-    { 
-      id: 2, 
-      name: "Dr. Emily Davis", 
-      joined: 2020, 
-      photo: "https://images.pexels.com/photos/3762800/pexels-photo-3762800.jpeg?auto=compress&cs=tinysrgb&w=150",
-      qualification: "Ph.D. in Software Engineering",
-      role: "Assistant Professor",
-      subjects: ["Web Development", "Software Engineering", "Mobile App Development"]
-    },
-    { 
-      id: 3, 
-      name: "Prof. Michael Chen", 
-      joined: 2019, 
-      photo: "https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg?auto=compress&cs=tinysrgb&w=150",
-      qualification: "Ph.D. in Artificial Intelligence",
-      role: "Professor & HOD",
-      subjects: ["Machine Learning", "Artificial Intelligence", "Deep Learning"]
-    }
+    { id: 1, name: "Dr. John Smith", joined: 2018, photo: "https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg?auto=compress&cs=tinysrgb&w=150", qualification: "Ph.D. in Computer Science", role: "Associate Professor", subjects: ["Data Structures", "Algorithms", "Database Systems"] },
+    { id: 2, name: "Dr. Emily Davis", joined: 2020, photo: "https://images.pexels.com/photos/3762800/pexels-photo-3762800.jpeg?auto=compress&cs=tinysrgb&w=150", qualification: "Ph.D. in Software Engineering", role: "Assistant Professor", subjects: ["Web Development", "Software Engineering", "Mobile App Development"] },
+    { id: 3, name: "Prof. Michael Chen", joined: 2019, photo: "https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg?auto=compress&cs=tinysrgb&w=150", qualification: "Ph.D. in Artificial Intelligence", role: "Professor & HOD", subjects: ["Machine Learning", "Artificial Intelligence", "Deep Learning"] }
   ]
 };
 
@@ -235,178 +106,25 @@ const mockPrograms = [
 ];
 
 const mockStudents = {
-  "1-A": [
-    { 
-      id: 1, 
-      name: "Alex Johnson", 
-      rollNo: "CS001", 
-      attendance: 85, 
-      photo: "https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=150",
-      admissionNo: "ADM2023001",
-      admissionYear: 2023,
-      degree: "B.Tech",
-      department: "Computer Science",
-      semester: "6th Semester",
-      courseName: "Computer Science and Engineering",
-      college: "Stanford University",
-      curriculumPlan: "2023-2027 Curriculum",
-      studentStatus: "Active",
-      subjectAttendance: {
-        "Data Structures": 88,
-        "Algorithms": 82,
-        "Database Systems": 90,
-        "Web Development": 80
-      }
-    },
-    { 
-      id: 2, 
-      name: "Sarah Wilson", 
-      rollNo: "CS002", 
-      attendance: 92, 
-      photo: "https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=150",
-      admissionNo: "ADM2023002",
-      admissionYear: 2023,
-      degree: "B.Tech",
-      department: "Computer Science",
-      semester: "6th Semester",
-      courseName: "Computer Science and Engineering",
-      college: "Stanford University",
-      curriculumPlan: "2023-2027 Curriculum",
-      studentStatus: "Active",
-      subjectAttendance: {
-        "Data Structures": 95,
-        "Algorithms": 90,
-        "Database Systems": 94,
-        "Web Development": 89
-      }
-    },
-    { 
-      id: 3, 
-      name: "David Brown", 
-      rollNo: "CS003", 
-      attendance: 68, 
-      photo: "https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=150",
-      admissionNo: "ADM2023003",
-      admissionYear: 2023,
-      degree: "B.Tech",
-      department: "Computer Science",
-      semester: "6th Semester",
-      courseName: "Computer Science and Engineering",
-      college: "Stanford University",
-      curriculumPlan: "2023-2027 Curriculum",
-      studentStatus: "Active",
-      subjectAttendance: {
-        "Data Structures": 70,
-        "Algorithms": 65,
-        "Database Systems": 72,
-        "Web Development": 66
-      }
-    }
-  ],
-  "1-B": [
-    { 
-      id: 4, 
-      name: "Emma Davis", 
-      rollNo: "CS004", 
-      attendance: 78, 
-      photo: "https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=150",
-      admissionNo: "ADM2023004",
-      admissionYear: 2023,
-      degree: "B.Tech",
-      department: "Computer Science",
-      semester: "6th Semester",
-      courseName: "Computer Science and Engineering",
-      college: "Stanford University",
-      curriculumPlan: "2023-2027 Curriculum",
-      studentStatus: "Active",
-      subjectAttendance: {
-        "Web Development": 80,
-        "Software Engineering": 76,
-        "Mobile App Development": 78,
-        "Computer Networks": 77
-      }
-    },
-    { 
-      id: 5, 
-      name: "James Wilson", 
-      rollNo: "CS005", 
-      attendance: 72, 
-      photo: "https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=150",
-      admissionNo: "ADM2023005",
-      admissionYear: 2023,
-      degree: "B.Tech",
-      department: "Computer Science",
-      semester: "6th Semester",
-      courseName: "Computer Science and Engineering",
-      college: "Stanford University",
-      curriculumPlan: "2023-2027 Curriculum",
-      studentStatus: "Active",
-      subjectAttendance: {
-        "Web Development": 74,
-        "Software Engineering": 70,
-        "Mobile App Development": 73,
-        "Computer Networks": 71
-      }
-    }
-  ],
-  "1-C": [
-    { 
-      id: 6, 
-      name: "Lisa Chen", 
-      rollNo: "CS006", 
-      attendance: 89, 
-      photo: "https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=150",
-      admissionNo: "ADM2023006",
-      admissionYear: 2023,
-      degree: "B.Tech",
-      department: "Computer Science",
-      semester: "6th Semester",
-      courseName: "Computer Science and Engineering",
-      college: "Stanford University",
-      curriculumPlan: "2023-2027 Curriculum",
-      studentStatus: "Active",
-      subjectAttendance: {
-        "Machine Learning": 92,
-        "Artificial Intelligence": 87,
-        "Deep Learning": 90,
-        "Data Mining": 88
-      }
-    }
-  ]
+  "1-A": [ { id: 1, name: "Alex Johnson", rollNo: "CS001", attendance: 85, photo: "https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=150", admissionNo: "ADM2023001", admissionYear: 2023, degree: "B.Tech", department: "Computer Science", semester: "6th Semester", courseName: "Computer Science and Engineering", college: "Stanford University", curriculumPlan: "2023-2027 Curriculum", studentStatus: "Active", subjectAttendance: { "Data Structures": 88, "Algorithms": 82, "Database Systems": 90, "Web Development": 80 } }, { id: 2, name: "Sarah Wilson", rollNo: "CS002", attendance: 92, photo: "https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=150", admissionNo: "ADM2023002", admissionYear: 2023, degree: "B.Tech", department: "Computer Science", semester: "6th Semester", courseName: "Computer Science and Engineering", college: "Stanford University", curriculumPlan: "2023-2027 Curriculum", studentStatus: "Active", subjectAttendance: { "Data Structures": 95, "Algorithms": 90, "Database Systems": 94, "Web Development": 89 } }, { id: 3, name: "David Brown", rollNo: "CS003", attendance: 68, photo: "https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=150", admissionNo: "ADM2023003", admissionYear: 2023, degree: "B.Tech", department: "Computer Science", semester: "6th Semester", courseName: "Computer Science and Engineering", college: "Stanford University", curriculumPlan: "2023-2027 Curriculum", studentStatus: "Active", subjectAttendance: { "Data Structures": 70, "Algorithms": 65, "Database Systems": 72, "Web Development": 66 } } ],
+  "1-B": [ { id: 4, name: "Emma Davis", rollNo: "CS004", attendance: 78, photo: "https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=150", admissionNo: "ADM2023004", admissionYear: 2023, degree: "B.Tech", department: "Computer Science", semester: "6th Semester", courseName: "Computer Science and Engineering", college: "Stanford University", curriculumPlan: "2023-2027 Curriculum", studentStatus: "Active", subjectAttendance: { "Web Development": 80, "Software Engineering": 76, "Mobile App Development": 78, "Computer Networks": 77 } }, { id: 5, name: "James Wilson", rollNo: "CS005", attendance: 72, photo: "https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=150", admissionNo: "ADM2023005", admissionYear: 2023, degree: "B.Tech", department: "Computer Science", semester: "6th Semester", courseName: "Computer Science and Engineering", college: "Stanford University", curriculumPlan: "2023-2027 Curriculum", studentStatus: "Active", subjectAttendance: { "Web Development": 74, "Software Engineering": 70, "Mobile App Development": 73, "Computer Networks": 71 } } ],
+  "1-C": [ { id: 6, name: "Lisa Chen", rollNo: "CS006", attendance: 89, photo: "https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=150", admissionNo: "ADM2023006", admissionYear: 2023, degree: "B.Tech", department: "Computer Science", semester: "6th Semester", courseName: "Computer Science and Engineering", college: "Stanford University", curriculumPlan: "2023-2027 Curriculum", studentStatus: "Active", subjectAttendance: { "Machine Learning": 92, "Artificial Intelligence": 87, "Deep Learning": 90, "Data Mining": 88 } } ]
 };
 
-// Weekly schedule data
 const generateWeeklySchedule = () => {
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
   const timeSlots = ['09:00-10:00', '10:00-11:00', '11:00-12:00', '14:00-15:00'];
   const subjects = ['Data Structures', 'Algorithms', 'Database Systems', 'Web Development'];
-  
   const schedule = {};
   days.forEach(day => {
-    schedule[day] = timeSlots.map((time, index) => ({
-      id: `${day}-${index}`,
-      subject: subjects[index],
-      time: time,
-      room: `Room ${101 + index}`,
-      professor: 'Dr. John Smith'
-    }));
+    schedule[day] = timeSlots.map((time, index) => ({ id: `${day}-${index}`, subject: subjects[index], time: time, room: `Room ${101 + index}`, professor: 'Dr. John Smith' }));
   });
-  
   return schedule;
 };
 
 const mockSchedule = generateWeeklySchedule();
 
-// Custom color classes
-const colors = {
-  primaryBlue: 'bg-[#647FBC]',
-  secondaryBlue: 'bg-[#91ADC8]',
-  lightTeal: 'bg-[#AED6CF]',
-  lightYellow: 'bg-[#FAFDD6]',
-  primaryBlueBorder: 'border-[#647FBC]',
-  primaryBlueText: 'text-[#647FBC]',
-  primaryBlueHover: 'hover:bg-[#647FBC]'
-};
+const colors = { primaryBlue: 'bg-[#647FBC]', secondaryBlue: 'bg-[#91ADC8]', lightTeal: 'bg-[#AED6CF]', lightYellow: 'bg-[#FAFDD6]', primaryBlueBorder: 'border-[#647FBC]', primaryBlueText: 'text-[#647FBC]', primaryBlueHover: 'hover:bg-[#647FBC]' };
 
 // Login Page Component
 const LoginPage = ({ onLogin, showSignup, toggleSignup }) => {
@@ -449,51 +167,20 @@ const LoginPage = ({ onLogin, showSignup, toggleSignup }) => {
             <h2 className="text-3xl font-bold text-center mb-8">Create Account</h2>
             
             <form onSubmit={handleSubmit} className="space-y-6">
-              <input
-                type="text"
-                placeholder="Full Name"
-                className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]"
-                required
-              />
-              <input
-                type="email"
-                placeholder="Email Address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]"
-                required
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]"
-                required
-              />
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]"
-              >
+              <input type="text" placeholder="Full Name" className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]" required />
+              <input type="email" placeholder="Email Address" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]" required />
+              <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]" required />
+              <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]">
                 <option>Student</option>
                 <option>Professor</option>
                 <option>Admin</option>
               </select>
-              
-              <button
-                type="submit"
-                className={`w-full ${colors.primaryBlue} text-white p-4 rounded-lg font-semibold hover:bg-[#5a73a8] transition-colors`}
-              >
-                Create Account
-              </button>
+              <button type="submit" className={`w-full ${colors.primaryBlue} text-white p-4 rounded-lg font-semibold hover:bg-[#5a73a8] transition-colors`}> Create Account </button>
             </form>
 
             <p className="text-center mt-6 text-gray-600">
               Already have an account?{' '}
-              <button onClick={toggleSignup} className={`${colors.primaryBlueText} hover:underline font-semibold`}>
-                Sign In
-              </button>
+              <button onClick={toggleSignup} className={`${colors.primaryBlueText} hover:underline font-semibold`}> Sign In </button>
             </p>
           </div>
         </div>
@@ -506,7 +193,6 @@ const LoginPage = ({ onLogin, showSignup, toggleSignup }) => {
       <div className={`flex-1 ${colors.lightTeal} p-12 flex flex-col justify-center`}>
         <h1 className="text-4xl font-bold text-gray-800 mb-4">Modern University Attendance Management</h1>
         <p className="text-gray-600 mb-8">Streamline your educational experience with intelligent attendance tracking and comprehensive analytics.</p>
-        
         <div className="grid grid-cols-2 gap-6">
           {features.map((feature, index) => (
             <div key={index} className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow">
@@ -521,47 +207,20 @@ const LoginPage = ({ onLogin, showSignup, toggleSignup }) => {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
           <h2 className="text-3xl font-bold text-center mb-8">Welcome Back</h2>
-          
           <form onSubmit={handleSubmit} className="space-y-6">
-            <input
-              type="email"
-              placeholder="Email Address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]"
-              required
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]"
-              required
-            />
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]"
-            >
+            <input type="email" placeholder="Email Address" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]" required />
+            <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]" required />
+            <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]">
               <option>Student</option>
               <option>Professor</option>
               <option>Admin</option>
             </select>
-            
-            <button
-              type="submit"
-              className={`w-full ${colors.primaryBlue} text-white p-4 rounded-lg font-semibold hover:bg-[#5a73a8] transition-colors`}
-            >
-              Sign In
-            </button>
+            <button type="submit" className={`w-full ${colors.primaryBlue} text-white p-4 rounded-lg font-semibold hover:bg-[#5a73a8] transition-colors`}> Sign In </button>
           </form>
 
           <p className="text-center mt-6 text-gray-600">
             Don't have an account?{' '}
-            <button onClick={toggleSignup} className={`${colors.primaryBlueText} hover:underline font-semibold`}>
-              Sign Up
-            </button>
+            <button onClick={toggleSignup} className={`${colors.primaryBlueText} hover:underline font-semibold`}> Sign Up </button>
           </p>
         </div>
       </div>
@@ -577,7 +236,6 @@ const Sidebar = ({ activeView, setActiveView, items, userRole }) => {
         <h2 className="text-xl font-bold">ClassSync</h2>
         <p className="text-sm opacity-75">{userRole}</p>
       </div>
-      
       <nav className="space-y-2">
         {items.map((item) => (
           <button
@@ -596,21 +254,20 @@ const Sidebar = ({ activeView, setActiveView, items, userRole }) => {
   );
 };
 
-// Chart Components
+// Bar Chart Component
 const BarChart = ({ data, title }) => {
-  const maxValue = Math.max(...data.map(d => d.value));
-  
+  const maxValue = data.length > 0 ? Math.max(...data.map(d => d.value)) : 0;
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm">
       <h3 className="text-lg font-semibold mb-4">{title}</h3>
       <div className="space-y-3">
         {data.map((item, index) => (
           <div key={index} className="flex items-center space-x-3">
-            <div className="w-32 text-sm">{item.label}</div>
+            <div className="w-32 text-sm truncate">{item.label}</div>
             <div className="flex-1 bg-gray-200 rounded-full h-4 relative">
               <div
                 className={`${colors.primaryBlue} h-4 rounded-full transition-all duration-500`}
-                style={{ width: `${(item.value / maxValue) * 100}%` }}
+                style={{ width: `${maxValue > 0 ? (item.value / maxValue) * 100 : 0}%` }}
               />
             </div>
             <div className="w-12 text-sm text-gray-600">{item.value}%</div>
@@ -621,27 +278,17 @@ const BarChart = ({ data, title }) => {
   );
 };
 
-// QR Code Modal
+// QR Modal Component for Professor
 const QRModal = ({ isOpen, onClose, onEndSession, classInfo }) => {
-  const [timeLeft, setTimeLeft] = useState(300); // 5 minutes session time
-
+  const [timeLeft, setTimeLeft] = useState(300);
   useEffect(() => {
-    if (!isOpen) {
-      setTimeLeft(300);
-      return;
-    }
-    if (timeLeft === 0) {
-      onEndSession();
-      return;
-    }
-    const timerId = setInterval(() => {
-      setTimeLeft((prevTime) => prevTime - 1);
-    }, 1000);
+    if (!isOpen) { setTimeLeft(300); return; }
+    if (timeLeft === 0) { onEndSession(); return; }
+    const timerId = setInterval(() => { setTimeLeft((prevTime) => prevTime - 1); }, 1000);
     return () => clearInterval(timerId);
   }, [isOpen, timeLeft, onEndSession]);
 
   if (!isOpen) return null;
-
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
 
@@ -649,36 +296,20 @@ const QRModal = ({ isOpen, onClose, onEndSession, classInfo }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white p-8 rounded-2xl max-w-md w-full mx-4">
         <h2 className="text-2xl font-bold text-center mb-6">Attendance QR Code</h2>
-        
-        <div className="flex justify-center mb-6">
-          <QRCodeGenerator classInfo={classInfo} />
-        </div>
-
+        <div className="flex justify-center mb-6"> <QRCodeGenerator classInfo={classInfo} /> </div>
         <div className="text-center mb-6">
           <p className="text-gray-600 mb-2">Session ends in: {minutes}:{seconds.toString().padStart(2, '0')}</p>
           <p className="text-sm text-gray-500">QR code refreshes every 5 seconds</p>
         </div>
-
         <div className="flex space-x-3">
-          <button
-            onClick={onEndSession}
-            className="flex-1 bg-green-600 text-white p-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
-          >
-            End Session
-          </button>
-          <button
-            onClick={onClose}
-            className="flex-1 bg-gray-600 text-white p-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
-          >
-            Cancel
-          </button>
+          <button onClick={onEndSession} className="flex-1 bg-green-600 text-white p-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"> End Session </button>
+          <button onClick={onClose} className="flex-1 bg-gray-600 text-white p-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"> Cancel </button>
         </div>
       </div>
     </div>
   );
 };
-
-// Check-in Modal for Students
+//for going to next step only
 // Check-in Modal for Students
 const CheckInModal = ({ isOpen, onClose, className }) => {
   const [step, setStep] = useState(1);
@@ -691,7 +322,7 @@ const CheckInModal = ({ isOpen, onClose, className }) => {
     setTimeout(() => {
       setIsLoading(false);
       setStep(nextStep);
-    }, 1500); // Simulate network/processing delay
+    }, 500); // Shortened delay for smoother transition
   }, []);
 
   const handleScanSuccess = useCallback((data) => {
@@ -699,28 +330,22 @@ const CheckInModal = ({ isOpen, onClose, className }) => {
     try {
       const qrData = JSON.parse(data);
       const now = Date.now();
-      
-      // --- VALIDATION LOGIC ---
-      // 1. Check if the subject matches the current class
-      // 2. Check if the timestamp is recent (e.g., within 15 seconds)
       if (qrData.subject === className && (now - qrData.timestamp < 15000)) {
         console.log("QR Validation Successful!");
-        advanceStep(3); // Proceed to biometric step
+        advanceStep(3);
       } else {
-        console.warn("QR Validation Failed:", {
-            expectedSubject: className,
-            scannedSubject: qrData.subject,
-            isTimestampValid: (now - qrData.timestamp < 15000)
-        });
         setScanError("Invalid or expired QR code. Please try again.");
       }
     } catch (e) {
-      // This catches errors if the scanned QR code is not valid JSON
-      console.error("Error parsing QR data:", e);
       setScanError("Not a valid class QR code.");
     }
   }, [advanceStep, className]);
   
+  const handleBiometricSuccess = useCallback(() => {
+    console.log("Biometric validation successful!");
+    advanceStep(4);
+  }, [advanceStep]);
+
   const handleClose = () => {
     setStep(1);
     setScanError(null);
@@ -730,38 +355,27 @@ const CheckInModal = ({ isOpen, onClose, className }) => {
   if (!isOpen) return null;
 
   const steps = [
-    {
-      title: "Location Verification",
-      icon: Navigation,
-      content: <p className="text-center text-gray-600">Verifying your location to ensure you are on campus.</p>,
-      actionText: "Verify Location",
-      action: () => advanceStep(2),
+    { title: "Location Verification", icon: Navigation, content: <p className="text-center text-gray-600">Verifying your location to ensure you are on campus.</p>, actionText: "Verify Location", action: () => advanceStep(2) },
+    { 
+      title: "QR Code Scanning", 
+      icon: QrCode, 
+      content: ( 
+        <div> 
+          <QRCodeScanner onScanSuccess={handleScanSuccess} onScanError={(err) => setScanError("Could not start camera.")} /> 
+          {scanError && <p className="text-red-500 text-center mt-3 text-sm font-semibold">{scanError}</p>}
+          {/* --- TEMPORARY BUTTON FOR TESTING --- */}
+          <button
+              onClick={() => advanceStep(3)}
+              className="w-full mt-4 bg-yellow-500 text-white p-2 rounded-lg font-semibold hover:bg-yellow-600 transition-colors text-sm"
+          >
+              (Test) Skip to Biometrics
+          </button>
+        </div> 
+      ), 
+      actionText: null 
     },
-    {
-      title: "QR Code Scanning",
-      icon: QrCode,
-      content: (
-          <div>
-            <QRCodeScanner onScanSuccess={handleScanSuccess} onScanError={(err) => setScanError("Could not start camera.")} />
-            {scanError && <p className="text-red-500 text-center mt-3 text-sm font-semibold">{scanError}</p>}
-          </div>
-      ),
-      actionText: null, // No button needed, scanning is automatic
-    },
-    {
-      title: "Biometric Verification",
-      icon: Fingerprint,
-      content: <p className="text-center text-gray-600">Please verify your identity using the device's biometric sensor.</p>,
-      actionText: "Verify Biometric",
-      action: () => advanceStep(4),
-    },
-    {
-      title: "Success",
-      icon: CheckCircle,
-      content: <p className="text-center text-green-700">You have been successfully marked present!</p>,
-      actionText: "Complete",
-      action: handleClose,
-    }
+    { title: "Biometric Verification", icon: Fingerprint, content: <BiometricAuth onSuccess={handleBiometricSuccess} />, actionText: null },
+    { title: "Success", icon: CheckCircle, content: <p className="text-center text-green-700">You have been successfully marked present!</p>, actionText: "Complete", action: handleClose }
   ];
 
   const currentStep = steps[step - 1];
@@ -771,47 +385,17 @@ const CheckInModal = ({ isOpen, onClose, className }) => {
       <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full mx-4 transform transition-all">
         <h2 className="text-2xl font-bold text-center mb-2">Check-in: {className}</h2>
         <p className="text-center text-gray-600 mb-6">Step {step} of {steps.length}</p>
-
         <div className="flex justify-center mb-6 min-h-[120px] items-center">
-            <div className={`w-24 h-24 rounded-full flex items-center justify-center transition-colors duration-300 ${
-              step === 4 ? 'bg-green-100' : colors.lightTeal
-            }`}>
-              <currentStep.icon className={`w-12 h-12 transition-colors duration-300 ${
-                step === 4 ? 'text-green-600' : colors.primaryBlueText
-              }`} />
+            <div className={`w-24 h-24 rounded-full flex items-center justify-center transition-colors duration-300 ${ step === 4 ? 'bg-green-100' : colors.lightTeal }`}>
+              <currentStep.icon className={`w-12 h-12 transition-colors duration-300 ${ step === 4 ? 'text-green-600' : colors.primaryBlueText }`} />
             </div>
         </div>
-
         <h3 className="text-lg font-semibold text-center mb-2">{currentStep.title}</h3>
         <div className="mb-6">{currentStep.content}</div>
-
-        {isLoading && (
-          <div className="flex justify-center my-4">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#647FBC]"></div>
-          </div>
-        )}
-
+        {isLoading && ( <div className="flex justify-center my-4"> <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#647FBC]"></div> </div> )}
         <div className="flex flex-col space-y-3">
-          {currentStep.actionText && !isLoading && (
-             <button
-              onClick={currentStep.action}
-              className={`w-full text-white p-3 rounded-lg font-semibold transition-colors ${
-                step === 4 ? 'bg-green-600 hover:bg-green-700' : `${colors.primaryBlue} hover:bg-[#5a73a8]`
-              }`}
-            >
-              {currentStep.actionText}
-            </button>
-          )}
-          
-          {step < 4 && (
-            <button
-              onClick={handleClose}
-              disabled={isLoading}
-              className="w-full bg-gray-200 text-gray-700 p-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors disabled:opacity-50"
-            >
-              Cancel
-            </button>
-          )}
+          {currentStep.actionText && !isLoading && ( <button onClick={currentStep.action} className={`w-full text-white p-3 rounded-lg font-semibold transition-colors ${ step === 4 ? 'bg-green-600 hover:bg-green-700' : `${colors.primaryBlue} hover:bg-[#5a73a8]` }`}> {currentStep.actionText} </button> )}
+          {step < 4 && ( <button onClick={handleClose} disabled={isLoading} className="w-full bg-gray-200 text-gray-700 p-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors disabled:opacity-50"> Cancel </button> )}
         </div>
       </div>
     </div>
@@ -819,44 +403,94 @@ const CheckInModal = ({ isOpen, onClose, className }) => {
 };
 
 
+//REAL CODE 
+// // Check-in Modal for Students - MERGED VERSION
+// const CheckInModal = ({ isOpen, onClose, className }) => {
+//   const [step, setStep] = useState(1);
+//   const [isLoading, setIsLoading] = useState(false);
+//   const [scanError, setScanError] = useState(null);
+
+//   const advanceStep = useCallback((nextStep) => {
+//     setIsLoading(true);
+//     setScanError(null);
+//     setTimeout(() => {
+//       setIsLoading(false);
+//       setStep(nextStep);
+//     }, 500); // Shortened delay for smoother transition
+//   }, []);
+
+//   const handleScanSuccess = useCallback((data) => {
+//     console.log("QR Scan Attempt:", data);
+//     try {
+//       const qrData = JSON.parse(data);
+//       const now = Date.now();
+//       if (qrData.subject === className && (now - qrData.timestamp < 15000)) {
+//         console.log("QR Validation Successful!");
+//         advanceStep(3);
+//       } else {
+//         setScanError("Invalid or expired QR code. Please try again.");
+//       }
+//     } catch (e) {
+//       setScanError("Not a valid class QR code.");
+//     }
+//   }, [advanceStep, className]);
+  
+//   const handleBiometricSuccess = useCallback(() => {
+//     console.log("Biometric validation successful!");
+//     advanceStep(4);
+//   }, [advanceStep]);
+
+//   const handleClose = () => {
+//     setStep(1);
+//     setScanError(null);
+//     onClose();
+//   };
+
+//   if (!isOpen) return null;
+
+//   const steps = [
+//     { title: "Location Verification", icon: Navigation, content: <p className="text-center text-gray-600">Verifying your location to ensure you are on campus.</p>, actionText: "Verify Location", action: () => advanceStep(2) },
+//     { title: "QR Code Scanning", icon: QrCode, content: ( <div> <QRCodeScanner onScanSuccess={handleScanSuccess} onScanError={(err) => setScanError("Could not start camera.")} /> {scanError && <p className="text-red-500 text-center mt-3 text-sm font-semibold">{scanError}</p>} </div> ), actionText: null },
+//     { title: "Biometric Verification", icon: Fingerprint, content: <BiometricAuth onSuccess={handleBiometricSuccess} />, actionText: null },
+//     { title: "Success", icon: CheckCircle, content: <p className="text-center text-green-700">You have been successfully marked present!</p>, actionText: "Complete", action: handleClose }
+//   ];
+
+//   const currentStep = steps[step - 1];
+
+//   return (
+//     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+//       <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full mx-4 transform transition-all">
+//         <h2 className="text-2xl font-bold text-center mb-2">Check-in: {className}</h2>
+//         <p className="text-center text-gray-600 mb-6">Step {step} of {steps.length}</p>
+//         <div className="flex justify-center mb-6 min-h-[120px] items-center">
+//             <div className={`w-24 h-24 rounded-full flex items-center justify-center transition-colors duration-300 ${ step === 4 ? 'bg-green-100' : colors.lightTeal }`}>
+//               <currentStep.icon className={`w-12 h-12 transition-colors duration-300 ${ step === 4 ? 'text-green-600' : colors.primaryBlueText }`} />
+//             </div>
+//         </div>
+//         <h3 className="text-lg font-semibold text-center mb-2">{currentStep.title}</h3>
+//         <div className="mb-6">{currentStep.content}</div>
+//         {isLoading && ( <div className="flex justify-center my-4"> <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#647FBC]"></div> </div> )}
+//         <div className="flex flex-col space-y-3">
+//           {currentStep.actionText && !isLoading && ( <button onClick={currentStep.action} className={`w-full text-white p-3 rounded-lg font-semibold transition-colors ${ step === 4 ? 'bg-green-600 hover:bg-green-700' : `${colors.primaryBlue} hover:bg-[#5a73a8]` }`}> {currentStep.actionText} </button> )}
+//           {step < 4 && ( <button onClick={handleClose} disabled={isLoading} className="w-full bg-gray-200 text-gray-700 p-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors disabled:opacity-50"> Cancel </button> )}
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
+
 // Date Navigation Component
 const DateNavigation = ({ currentDate, onDateChange }) => {
   const formatDate = (date) => {
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
+    return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   };
-
-  const goToPreviousDay = () => {
-    const newDate = new Date(currentDate);
-    newDate.setDate(newDate.getDate() - 1);
-    onDateChange(newDate);
-  };
-
-  const goToNextDay = () => {
-    const newDate = new Date(currentDate);
-    newDate.setDate(newDate.getDate() + 1);
-    onDateChange(newDate);
-  };
-
+  const goToPreviousDay = () => { const newDate = new Date(currentDate); newDate.setDate(newDate.getDate() - 1); onDateChange(newDate); };
+  const goToNextDay = () => { const newDate = new Date(currentDate); newDate.setDate(newDate.getDate() + 1); onDateChange(newDate); };
   return (
     <div className="flex items-center justify-between mb-6">
-      <button
-        onClick={goToPreviousDay}
-        className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
-      >
-        <ChevronLeft className="w-5 h-5" />
-      </button>
+      <button onClick={goToPreviousDay} className="p-2 hover:bg-gray-200 rounded-lg transition-colors"> <ChevronLeft className="w-5 h-5" /> </button>
       <h2 className="text-xl font-semibold">{formatDate(currentDate)}</h2>
-      <button
-        onClick={goToNextDay}
-        className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
-      >
-        <ChevronRight className="w-5 h-5" />
-      </button>
+      <button onClick={goToNextDay} className="p-2 hover:bg-gray-200 rounded-lg transition-colors"> <ChevronRight className="w-5 h-5" /> </button>
     </div>
   );
 };
