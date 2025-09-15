@@ -1218,7 +1218,18 @@ const ProfessorDashboard = () => {
     setSelectedClass(classInfo);
     setShowQRModal(true);
   };
+  //Online Classes
+  const handleStartOnlineClass = (classInfo) => {
+  // You can generate a dynamic Google Meet link based on the class,
+  // or use a static one for now.
+  const googleMeetLink = `https://meet.google.com/landing?authuser=0=${classInfo.id}`;
 
+  // This will open a new browser tab with the Google Meet link.
+  window.open(googleMeetLink, '_blank');
+
+  // You can also add state here to show a confirmation message, if needed.
+  // For example, set a state variable like setOnlineSessionStarted(true);
+};
   const handleEndSession = () => {
     setShowQRModal(false);
 
@@ -1312,9 +1323,12 @@ const ProfessorDashboard = () => {
                     >
                       Offline Attendance
                     </button>
-                    <button className={`${colors.secondaryBlue} text-white px-4 py-2 rounded-lg font-medium hover:bg-[#7d9abd] transition-colors`}>
-                      Online Attendance
-                    </button>
+                    <button 
+                      onClick={() => handleStartOnlineClass(cls)} 
+                      className={`${colors.primaryBlue} text-white px-4 py-2 rounded-lg font-medium hover:bg-[#7d9abd] transition-colors`}
+                    >
+  Online Attendance
+</button>
                   </div>
                 </div>
               ))
