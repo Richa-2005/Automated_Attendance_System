@@ -1,3 +1,5 @@
+import QRCodeScanner from './components/QRCodeGenerator.jsx'; // Assuming it's in the same folder
+import BiometricAuth from './components/BiometricAuth.jsx'; // Assuming it's in the same folder
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Users, 
@@ -22,10 +24,116 @@ import {
   Award,
   MapPin as Location,
   Phone,
-  Mail
+  Mail,
+  X,
+  Loader
 } from 'lucide-react';
-import QRCodeScanner from './components/QRCodeGenerator.jsx'; // Assuming it's in the same folder
-import BiometricAuth from './components/BiometricAuth.jsx'; // Assuming it's in the same folder
+import * as turf from '@turf/turf';
+
+// --- Location Verification Component ---
+const LocationVerification = ({ onSuccess, onError }) => {
+  const [status, setStatus] = useState('pending'); // pending, getting, verifying, success, error
+  const [message, setMessage] = useState('Please grant location access to proceed.');
+  const [coords, setCoords] = useState("--");
+  const [accuracy, setAccuracy] = useState("--");
+
+  const geofences = {
+    campus: {
+      name: "Adani University Campus",
+      center: [72.544496, 23.156516], // [Longitude, Latitude] for Turf.js
+      radius: 500, // User must be within 500 meters.
+    },
+  };
+
+  const getDistance = (from, to) => {
+    const fromPoint = turf.point(from);
+    const toPoint = turf.point(to);
+    return turf.distance(fromPoint, toPoint, { units: "meters" });
+  };
+
+  const handleVerifyLocation = () => {
+    setStatus('getting');
+    setMessage('Accessing your location...');
+
+    if (!navigator.geolocation || typeof turf === 'undefined') {
+      const errorMsg = !navigator.geolocation ? 'Geolocation is not supported by your browser.' : 'Location library (turf.js) not loaded.';
+      setStatus('error');
+      setMessage(errorMsg);
+      onError(errorMsg);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setStatus('verifying');
+        setMessage('Comparing your location to campus...');
+        const { latitude, longitude, accuracy: accuracyMeters } = position.coords;
+
+        setCoords(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+        setAccuracy(`${accuracyMeters.toFixed(1)} meters`);
+
+        const userLocation = [longitude, latitude];
+        const geofence = geofences.campus;
+        const distance = getDistance(userLocation, geofence.center);
+
+        setTimeout(() => { // Simulate verification delay
+          if (distance <= geofence.radius) {
+            setStatus('success');
+            setMessage(`Location verified! You are inside ${geofence.name}.`);
+            setTimeout(onSuccess, 1200); 
+          } else {
+            setStatus('error');
+            const distanceKm = (distance / 1000).toFixed(2);
+            setMessage(`You are outside the campus area by ${distanceKm} km.`);
+            onError('User is not within the required radius.');
+          }
+        }, 1500);
+      },
+      (error) => {
+        setStatus('error');
+        const errorMessage = "Could not get your location. Please check browser permissions.";
+        setMessage(errorMessage);
+        onError(errorMessage);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
+  const renderStatusInfo = () => {
+      let icon = <Loader className="w-8 h-8 text-gray-500 animate-spin" />;
+      let color = 'bg-gray-100';
+
+      if(status === 'pending') icon = <Navigation className="w-8 h-8 text-blue-500" />;
+      if(status === 'success') { icon = <CheckCircle className="w-8 h-8 text-green-600" />; color = 'bg-green-100'; }
+      if(status === 'error') { icon = <X className="w-8 h-8 text-red-600" />; color = 'bg-red-100'; }
+      
+      return (
+        <div className={`p-4 rounded-lg text-center ${color} mb-4`}>
+            <div className="flex justify-center items-center h-10 mb-2">{icon}</div>
+            <p className="text-sm font-semibold">{message}</p>
+        </div>
+      );
+  }
+
+  return (
+    <div className="text-center p-2">
+      {renderStatusInfo()}
+      <div className="bg-gray-50 p-3 rounded-lg text-xs text-gray-600 mb-4 text-left">
+        <p><strong>Your Location:</strong> {coords}</p>
+        <p><strong>Accuracy:</strong> {accuracy}</p>
+      </div>
+      {status === 'pending' && (
+        <button
+          onClick={handleVerifyLocation}
+          className="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          Verify My Location
+        </button>
+      )}
+    </div>
+  );
+};
+
 
 // --- QR Code Generator Component ---
 // This can also be moved to its own file if you like
@@ -309,8 +417,9 @@ const QRModal = ({ isOpen, onClose, onEndSession, classInfo }) => {
     </div>
   );
 };
-//for going to next step only
-// Check-in Modal for Students
+
+//location verification 
+// Check-in Modal with integrated Location Verification
 const CheckInModal = ({ isOpen, onClose, className }) => {
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -318,58 +427,57 @@ const CheckInModal = ({ isOpen, onClose, className }) => {
 
   const advanceStep = useCallback((nextStep) => {
     setIsLoading(true);
-    setScanError(null); // Clear previous errors
-    setTimeout(() => {
-      setIsLoading(false);
-      setStep(nextStep);
-    }, 500); // Shortened delay for smoother transition
+    setScanError(null);
+    setTimeout(() => { setIsLoading(false); setStep(nextStep); }, 500);
   }, []);
 
   const handleScanSuccess = useCallback((data) => {
-    console.log("QR Scan Attempt:", data);
     try {
       const qrData = JSON.parse(data);
       const now = Date.now();
-      if (qrData.subject === className && (now - qrData.timestamp < 15000)) {
-        console.log("QR Validation Successful!");
-        advanceStep(3);
-      } else {
-        setScanError("Invalid or expired QR code. Please try again.");
-      }
-    } catch (e) {
-      setScanError("Not a valid class QR code.");
-    }
+      if (qrData.subject === className && (now - qrData.timestamp < 15000)) { advanceStep(3); } 
+      else { setScanError("Invalid or expired QR code. Please try again."); }
+    } catch (e) { setScanError("Not a valid class QR code."); }
   }, [advanceStep, className]);
   
-  const handleBiometricSuccess = useCallback(() => {
-    console.log("Biometric validation successful!");
-    advanceStep(4);
-  }, [advanceStep]);
-
-  const handleClose = () => {
-    setStep(1);
-    setScanError(null);
-    onClose();
-  };
+  const handleBiometricSuccess = useCallback(() => { advanceStep(4); }, [advanceStep]);
+  const handleClose = () => { setStep(1); setScanError(null); onClose(); };
+  
+  useEffect(() => { if(isOpen) { setStep(1); setScanError(null); } }, [isOpen])
 
   if (!isOpen) return null;
 
   const steps = [
-    { title: "Location Verification", icon: Navigation, content: <p className="text-center text-gray-600">Verifying your location to ensure you are on campus.</p>, actionText: "Verify Location", action: () => advanceStep(2) },
+    { 
+      title: "Location Verification", 
+      icon: Navigation, 
+      content: (
+        <div>
+          <LocationVerification onSuccess={() => advanceStep(2)} onError={(msg) => console.error(msg)} />
+          {/* --- TEMPORARY BUTTON FOR TESTING --- */}
+          <button
+              onClick={() => advanceStep(2)}
+              className="w-full mt-4 bg-yellow-500 text-white p-2 rounded-lg font-semibold hover:bg-yellow-600 transition-colors text-sm"
+          >
+              (Test) Skip Location
+          </button>
+        </div>
+      ), 
+      actionText: null 
+    },
     { 
       title: "QR Code Scanning", 
       icon: QrCode, 
       content: ( 
         <div> 
           <QRCodeScanner onScanSuccess={handleScanSuccess} onScanError={(err) => setScanError("Could not start camera.")} /> 
-          {scanError && <p className="text-red-500 text-center mt-3 text-sm font-semibold">{scanError}</p>}
-          {/* --- TEMPORARY BUTTON FOR TESTING --- */}
-          <button
-              onClick={() => advanceStep(3)}
+          {scanError && <p className="text-red-500 text-center mt-3 text-sm font-semibold">{scanError}</p>} 
+          <button 
+              onClick={() => advanceStep(3)} 
               className="w-full mt-4 bg-yellow-500 text-white p-2 rounded-lg font-semibold hover:bg-yellow-600 transition-colors text-sm"
           >
               (Test) Skip to Biometrics
-          </button>
+          </button> 
         </div> 
       ), 
       actionText: null 
@@ -385,11 +493,7 @@ const CheckInModal = ({ isOpen, onClose, className }) => {
       <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full mx-4 transform transition-all">
         <h2 className="text-2xl font-bold text-center mb-2">Check-in: {className}</h2>
         <p className="text-center text-gray-600 mb-6">Step {step} of {steps.length}</p>
-        <div className="flex justify-center mb-6 min-h-[120px] items-center">
-            <div className={`w-24 h-24 rounded-full flex items-center justify-center transition-colors duration-300 ${ step === 4 ? 'bg-green-100' : colors.lightTeal }`}>
-              <currentStep.icon className={`w-12 h-12 transition-colors duration-300 ${ step === 4 ? 'text-green-600' : colors.primaryBlueText }`} />
-            </div>
-        </div>
+        <div className="flex justify-center mb-6 min-h-[120px] items-center"> <div className={`w-24 h-24 rounded-full flex items-center justify-center transition-colors duration-300 ${ step === 4 ? 'bg-green-100' : colors.lightTeal }`}> <currentStep.icon className={`w-12 h-12 transition-colors duration-300 ${ step === 4 ? 'text-green-600' : colors.primaryBlueText }`} /> </div> </div>
         <h3 className="text-lg font-semibold text-center mb-2">{currentStep.title}</h3>
         <div className="mb-6">{currentStep.content}</div>
         {isLoading && ( <div className="flex justify-center my-4"> <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#647FBC]"></div> </div> )}
@@ -401,6 +505,100 @@ const CheckInModal = ({ isOpen, onClose, className }) => {
     </div>
   );
 };
+
+
+//for going to next step only
+// Check-in Modal for Students
+// const CheckInModal = ({ isOpen, onClose, className }) => {
+//   const [step, setStep] = useState(1);
+//   const [isLoading, setIsLoading] = useState(false);
+//   const [scanError, setScanError] = useState(null);
+
+//   const advanceStep = useCallback((nextStep) => {
+//     setIsLoading(true);
+//     setScanError(null); // Clear previous errors
+//     setTimeout(() => {
+//       setIsLoading(false);
+//       setStep(nextStep);
+//     }, 500); // Shortened delay for smoother transition
+//   }, []);
+
+//   const handleScanSuccess = useCallback((data) => {
+//     console.log("QR Scan Attempt:", data);
+//     try {
+//       const qrData = JSON.parse(data);
+//       const now = Date.now();
+//       if (qrData.subject === className && (now - qrData.timestamp < 15000)) {
+//         console.log("QR Validation Successful!");
+//         advanceStep(3);
+//       } else {
+//         setScanError("Invalid or expired QR code. Please try again.");
+//       }
+//     } catch (e) {
+//       setScanError("Not a valid class QR code.");
+//     }
+//   }, [advanceStep, className]);
+  
+//   const handleBiometricSuccess = useCallback(() => {
+//     console.log("Biometric validation successful!");
+//     advanceStep(4);
+//   }, [advanceStep]);
+
+//   const handleClose = () => {
+//     setStep(1);
+//     setScanError(null);
+//     onClose();
+//   };
+
+//   if (!isOpen) return null;
+
+//   const steps = [
+//     { title: "Location Verification", icon: Navigation, content: <p className="text-center text-gray-600">Verifying your location to ensure you are on campus.</p>, actionText: "Verify Location", action: () => advanceStep(2) },
+//     { 
+//       title: "QR Code Scanning", 
+//       icon: QrCode, 
+//       content: ( 
+//         <div> 
+//           <QRCodeScanner onScanSuccess={handleScanSuccess} onScanError={(err) => setScanError("Could not start camera.")} /> 
+//           {scanError && <p className="text-red-500 text-center mt-3 text-sm font-semibold">{scanError}</p>}
+//           {/* --- TEMPORARY BUTTON FOR TESTING --- */}
+//           <button
+//               onClick={() => advanceStep(3)}
+//               className="w-full mt-4 bg-yellow-500 text-white p-2 rounded-lg font-semibold hover:bg-yellow-600 transition-colors text-sm"
+//           >
+//               (Test) Skip to Biometrics
+//           </button>
+//         </div> 
+//       ), 
+//       actionText: null 
+//     },
+//     { title: "Biometric Verification", icon: Fingerprint, content: <BiometricAuth onSuccess={handleBiometricSuccess} />, actionText: null },
+//     { title: "Success", icon: CheckCircle, content: <p className="text-center text-green-700">You have been successfully marked present!</p>, actionText: "Complete", action: handleClose }
+//   ];
+
+//   const currentStep = steps[step - 1];
+
+//   return (
+//     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+//       <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full mx-4 transform transition-all">
+//         <h2 className="text-2xl font-bold text-center mb-2">Check-in: {className}</h2>
+//         <p className="text-center text-gray-600 mb-6">Step {step} of {steps.length}</p>
+//         <div className="flex justify-center mb-6 min-h-[120px] items-center">
+//             <div className={`w-24 h-24 rounded-full flex items-center justify-center transition-colors duration-300 ${ step === 4 ? 'bg-green-100' : colors.lightTeal }`}>
+//               <currentStep.icon className={`w-12 h-12 transition-colors duration-300 ${ step === 4 ? 'text-green-600' : colors.primaryBlueText }`} />
+//             </div>
+//         </div>
+//         <h3 className="text-lg font-semibold text-center mb-2">{currentStep.title}</h3>
+//         <div className="mb-6">{currentStep.content}</div>
+//         {isLoading && ( <div className="flex justify-center my-4"> <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#647FBC]"></div> </div> )}
+//         <div className="flex flex-col space-y-3">
+//           {currentStep.actionText && !isLoading && ( <button onClick={currentStep.action} className={`w-full text-white p-3 rounded-lg font-semibold transition-colors ${ step === 4 ? 'bg-green-600 hover:bg-green-700' : `${colors.primaryBlue} hover:bg-[#5a73a8]` }`}> {currentStep.actionText} </button> )}
+//           {step < 4 && ( <button onClick={handleClose} disabled={isLoading} className="w-full bg-gray-200 text-gray-700 p-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors disabled:opacity-50"> Cancel </button> )}
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
 
 
 //REAL CODE 
