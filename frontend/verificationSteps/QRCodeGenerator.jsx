@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
-// --- QR Code Generator Component ---
+// --- QR Code Generator Component (No changes needed, this code is correct) ---
 /**
  * A component that generates and displays a QR code that refreshes at a set interval.
  * This component now uses the qrcode.js library, which is loaded dynamically by the main App component.
@@ -60,7 +60,8 @@ export const QRCodeGenerator = ({ classInfo, refreshRate = 5000 }) => {
   );
 };
 
-// --- QR Code Scanner Component for Student ---
+
+// --- QR Code Scanner Component for Student (CORRECTED FIX) ---
 /**
  * A component to scan QR codes using the device's camera.
  * @param {object} props - The component props.
@@ -70,11 +71,15 @@ export const QRCodeGenerator = ({ classInfo, refreshRate = 5000 }) => {
 export const QRCodeScanner = ({ onScanSuccess, onScanError }) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-  // Use a ref to hold the stream object so it persists across re-renders
   const streamRef = useRef(null);
+  const isInitialized = useRef(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (isInitialized.current) {
+        return;
+    }
+      
     if (typeof jsQR === 'undefined') {
       setError("Scanning library not ready. Please wait.");
       return;
@@ -105,7 +110,7 @@ export const QRCodeScanner = ({ onScanSuccess, onScanError }) => {
 
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
       .then(stream => {
-        streamRef.current = stream; // Store the stream in the ref
+        streamRef.current = stream; 
         if (video) {
             video.srcObject = stream;
             video.setAttribute("playsinline", true);
@@ -116,6 +121,8 @@ export const QRCodeScanner = ({ onScanSuccess, onScanError }) => {
             });
             animationFrameId = requestAnimationFrame(tick);
         }
+        // Mark as initialized so this block doesn't run again on the Strict Mode re-mount.
+        isInitialized.current = true;
       })
       .catch(err => {
         console.error("Camera access error:", err);
@@ -123,12 +130,13 @@ export const QRCodeScanner = ({ onScanSuccess, onScanError }) => {
         if(onScanError) onScanError(err);
       });
 
-    // The cleanup function will now reliably access the stream from the ref
     return () => {
+      // This cleanup function will stop the camera stream when the component is truly unmounted.
       cancelAnimationFrame(animationFrameId);
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
+      // **FIX:** We no longer reset the initialization flag here. This was the source of the bug.
     };
   }, [onScanSuccess, onScanError]);
 
@@ -141,3 +149,4 @@ export const QRCodeScanner = ({ onScanSuccess, onScanError }) => {
     </div>
   );
 };
+
