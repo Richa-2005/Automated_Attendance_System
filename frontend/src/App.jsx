@@ -418,8 +418,7 @@ const QRModal = ({ isOpen, onClose, onEndSession, classInfo }) => {
   );
 };
 
-//location verification 
-// Check-in Modal with integrated Location Verification
+//check in modal for just scan any qr right now.
 const CheckInModal = ({ isOpen, onClose, className }) => {
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -431,14 +430,13 @@ const CheckInModal = ({ isOpen, onClose, className }) => {
     setTimeout(() => { setIsLoading(false); setStep(nextStep); }, 500);
   }, []);
 
+  // --- THIS IS THE CRITICAL CHANGE ---
+  // We are removing all validation logic. This function now accepts ANY successful scan
+  // and immediately moves to the next step.
   const handleScanSuccess = useCallback((data) => {
-    try {
-      const qrData = JSON.parse(data);
-      const now = Date.now();
-      if (qrData.subject === className && (now - qrData.timestamp < 15000)) { advanceStep(3); } 
-      else { setScanError("Invalid or expired QR code. Please try again."); }
-    } catch (e) { setScanError("Not a valid class QR code."); }
-  }, [advanceStep, className]);
+    console.log("Scan successful (validation skipped for demo). Data:", data);
+    advanceStep(3); // Immediately advance to the biometric step
+  }, [advanceStep]);
   
   const handleBiometricSuccess = useCallback(() => { advanceStep(4); }, [advanceStep]);
   const handleClose = () => { setStep(1); setScanError(null); onClose(); };
@@ -454,7 +452,6 @@ const CheckInModal = ({ isOpen, onClose, className }) => {
       content: (
         <div>
           <LocationVerification onSuccess={() => advanceStep(2)} onError={(msg) => console.error(msg)} />
-          {/* --- TEMPORARY BUTTON FOR TESTING --- */}
           <button
               onClick={() => advanceStep(2)}
               className="w-full mt-4 bg-yellow-500 text-white p-2 rounded-lg font-semibold hover:bg-yellow-600 transition-colors text-sm"
@@ -493,12 +490,16 @@ const CheckInModal = ({ isOpen, onClose, className }) => {
       <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full mx-4 transform transition-all">
         <h2 className="text-2xl font-bold text-center mb-2">Check-in: {className}</h2>
         <p className="text-center text-gray-600 mb-6">Step {step} of {steps.length}</p>
-        <div className="flex justify-center mb-6 min-h-[120px] items-center"> <div className={`w-24 h-24 rounded-full flex items-center justify-center transition-colors duration-300 ${ step === 4 ? 'bg-green-100' : colors.lightTeal }`}> <currentStep.icon className={`w-12 h-12 transition-colors duration-300 ${ step === 4 ? 'text-green-600' : colors.primaryBlueText }`} /> </div> </div>
+        <div className="flex justify-center mb-6 min-h-[120px] items-center">
+            <div className={`w-24 h-24 rounded-full flex items-center justify-center transition-colors duration-300 ${ step === 4 ? 'bg-green-100' : 'bg-teal-100' /* using a placeholder */ }`}>
+                <currentStep.icon className={`w-12 h-12 transition-colors duration-300 ${ step === 4 ? 'text-green-600' : 'text-blue-700' /* placeholder */ }`} />
+            </div>
+        </div>
         <h3 className="text-lg font-semibold text-center mb-2">{currentStep.title}</h3>
         <div className="mb-6">{currentStep.content}</div>
         {isLoading && ( <div className="flex justify-center my-4"> <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#647FBC]"></div> </div> )}
         <div className="flex flex-col space-y-3">
-          {currentStep.actionText && !isLoading && ( <button onClick={currentStep.action} className={`w-full text-white p-3 rounded-lg font-semibold transition-colors ${ step === 4 ? 'bg-green-600 hover:bg-green-700' : `${colors.primaryBlue} hover:bg-[#5a73a8]` }`}> {currentStep.actionText} </button> )}
+          {currentStep.actionText && !isLoading && ( <button onClick={currentStep.action} className={`w-full text-white p-3 rounded-lg font-semibold transition-colors ${ step === 4 ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700' /* placeholder */ }`}> {currentStep.actionText} </button> )}
           {step < 4 && ( <button onClick={handleClose} disabled={isLoading} className="w-full bg-gray-200 text-gray-700 p-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors disabled:opacity-50"> Cancel </button> )}
         </div>
       </div>
@@ -506,176 +507,6 @@ const CheckInModal = ({ isOpen, onClose, className }) => {
   );
 };
 
-
-//for going to next step only
-// Check-in Modal for Students
-// const CheckInModal = ({ isOpen, onClose, className }) => {
-//   const [step, setStep] = useState(1);
-//   const [isLoading, setIsLoading] = useState(false);
-//   const [scanError, setScanError] = useState(null);
-
-//   const advanceStep = useCallback((nextStep) => {
-//     setIsLoading(true);
-//     setScanError(null); // Clear previous errors
-//     setTimeout(() => {
-//       setIsLoading(false);
-//       setStep(nextStep);
-//     }, 500); // Shortened delay for smoother transition
-//   }, []);
-
-//   const handleScanSuccess = useCallback((data) => {
-//     console.log("QR Scan Attempt:", data);
-//     try {
-//       const qrData = JSON.parse(data);
-//       const now = Date.now();
-//       if (qrData.subject === className && (now - qrData.timestamp < 15000)) {
-//         console.log("QR Validation Successful!");
-//         advanceStep(3);
-//       } else {
-//         setScanError("Invalid or expired QR code. Please try again.");
-//       }
-//     } catch (e) {
-//       setScanError("Not a valid class QR code.");
-//     }
-//   }, [advanceStep, className]);
-  
-//   const handleBiometricSuccess = useCallback(() => {
-//     console.log("Biometric validation successful!");
-//     advanceStep(4);
-//   }, [advanceStep]);
-
-//   const handleClose = () => {
-//     setStep(1);
-//     setScanError(null);
-//     onClose();
-//   };
-
-//   if (!isOpen) return null;
-
-//   const steps = [
-//     { title: "Location Verification", icon: Navigation, content: <p className="text-center text-gray-600">Verifying your location to ensure you are on campus.</p>, actionText: "Verify Location", action: () => advanceStep(2) },
-//     { 
-//       title: "QR Code Scanning", 
-//       icon: QrCode, 
-//       content: ( 
-//         <div> 
-//           <QRCodeScanner onScanSuccess={handleScanSuccess} onScanError={(err) => setScanError("Could not start camera.")} /> 
-//           {scanError && <p className="text-red-500 text-center mt-3 text-sm font-semibold">{scanError}</p>}
-//           {/* --- TEMPORARY BUTTON FOR TESTING --- */}
-//           <button
-//               onClick={() => advanceStep(3)}
-//               className="w-full mt-4 bg-yellow-500 text-white p-2 rounded-lg font-semibold hover:bg-yellow-600 transition-colors text-sm"
-//           >
-//               (Test) Skip to Biometrics
-//           </button>
-//         </div> 
-//       ), 
-//       actionText: null 
-//     },
-//     { title: "Biometric Verification", icon: Fingerprint, content: <BiometricAuth onSuccess={handleBiometricSuccess} />, actionText: null },
-//     { title: "Success", icon: CheckCircle, content: <p className="text-center text-green-700">You have been successfully marked present!</p>, actionText: "Complete", action: handleClose }
-//   ];
-
-//   const currentStep = steps[step - 1];
-
-//   return (
-//     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-//       <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full mx-4 transform transition-all">
-//         <h2 className="text-2xl font-bold text-center mb-2">Check-in: {className}</h2>
-//         <p className="text-center text-gray-600 mb-6">Step {step} of {steps.length}</p>
-//         <div className="flex justify-center mb-6 min-h-[120px] items-center">
-//             <div className={`w-24 h-24 rounded-full flex items-center justify-center transition-colors duration-300 ${ step === 4 ? 'bg-green-100' : colors.lightTeal }`}>
-//               <currentStep.icon className={`w-12 h-12 transition-colors duration-300 ${ step === 4 ? 'text-green-600' : colors.primaryBlueText }`} />
-//             </div>
-//         </div>
-//         <h3 className="text-lg font-semibold text-center mb-2">{currentStep.title}</h3>
-//         <div className="mb-6">{currentStep.content}</div>
-//         {isLoading && ( <div className="flex justify-center my-4"> <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#647FBC]"></div> </div> )}
-//         <div className="flex flex-col space-y-3">
-//           {currentStep.actionText && !isLoading && ( <button onClick={currentStep.action} className={`w-full text-white p-3 rounded-lg font-semibold transition-colors ${ step === 4 ? 'bg-green-600 hover:bg-green-700' : `${colors.primaryBlue} hover:bg-[#5a73a8]` }`}> {currentStep.actionText} </button> )}
-//           {step < 4 && ( <button onClick={handleClose} disabled={isLoading} className="w-full bg-gray-200 text-gray-700 p-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors disabled:opacity-50"> Cancel </button> )}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
-
-
-//REAL CODE 
-// // Check-in Modal for Students - MERGED VERSION
-// const CheckInModal = ({ isOpen, onClose, className }) => {
-//   const [step, setStep] = useState(1);
-//   const [isLoading, setIsLoading] = useState(false);
-//   const [scanError, setScanError] = useState(null);
-
-//   const advanceStep = useCallback((nextStep) => {
-//     setIsLoading(true);
-//     setScanError(null);
-//     setTimeout(() => {
-//       setIsLoading(false);
-//       setStep(nextStep);
-//     }, 500); // Shortened delay for smoother transition
-//   }, []);
-
-//   const handleScanSuccess = useCallback((data) => {
-//     console.log("QR Scan Attempt:", data);
-//     try {
-//       const qrData = JSON.parse(data);
-//       const now = Date.now();
-//       if (qrData.subject === className && (now - qrData.timestamp < 15000)) {
-//         console.log("QR Validation Successful!");
-//         advanceStep(3);
-//       } else {
-//         setScanError("Invalid or expired QR code. Please try again.");
-//       }
-//     } catch (e) {
-//       setScanError("Not a valid class QR code.");
-//     }
-//   }, [advanceStep, className]);
-  
-//   const handleBiometricSuccess = useCallback(() => {
-//     console.log("Biometric validation successful!");
-//     advanceStep(4);
-//   }, [advanceStep]);
-
-//   const handleClose = () => {
-//     setStep(1);
-//     setScanError(null);
-//     onClose();
-//   };
-
-//   if (!isOpen) return null;
-
-//   const steps = [
-//     { title: "Location Verification", icon: Navigation, content: <p className="text-center text-gray-600">Verifying your location to ensure you are on campus.</p>, actionText: "Verify Location", action: () => advanceStep(2) },
-//     { title: "QR Code Scanning", icon: QrCode, content: ( <div> <QRCodeScanner onScanSuccess={handleScanSuccess} onScanError={(err) => setScanError("Could not start camera.")} /> {scanError && <p className="text-red-500 text-center mt-3 text-sm font-semibold">{scanError}</p>} </div> ), actionText: null },
-//     { title: "Biometric Verification", icon: Fingerprint, content: <BiometricAuth onSuccess={handleBiometricSuccess} />, actionText: null },
-//     { title: "Success", icon: CheckCircle, content: <p className="text-center text-green-700">You have been successfully marked present!</p>, actionText: "Complete", action: handleClose }
-//   ];
-
-//   const currentStep = steps[step - 1];
-
-//   return (
-//     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-//       <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full mx-4 transform transition-all">
-//         <h2 className="text-2xl font-bold text-center mb-2">Check-in: {className}</h2>
-//         <p className="text-center text-gray-600 mb-6">Step {step} of {steps.length}</p>
-//         <div className="flex justify-center mb-6 min-h-[120px] items-center">
-//             <div className={`w-24 h-24 rounded-full flex items-center justify-center transition-colors duration-300 ${ step === 4 ? 'bg-green-100' : colors.lightTeal }`}>
-//               <currentStep.icon className={`w-12 h-12 transition-colors duration-300 ${ step === 4 ? 'text-green-600' : colors.primaryBlueText }`} />
-//             </div>
-//         </div>
-//         <h3 className="text-lg font-semibold text-center mb-2">{currentStep.title}</h3>
-//         <div className="mb-6">{currentStep.content}</div>
-//         {isLoading && ( <div className="flex justify-center my-4"> <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#647FBC]"></div> </div> )}
-//         <div className="flex flex-col space-y-3">
-//           {currentStep.actionText && !isLoading && ( <button onClick={currentStep.action} className={`w-full text-white p-3 rounded-lg font-semibold transition-colors ${ step === 4 ? 'bg-green-600 hover:bg-green-700' : `${colors.primaryBlue} hover:bg-[#5a73a8]` }`}> {currentStep.actionText} </button> )}
-//           {step < 4 && ( <button onClick={handleClose} disabled={isLoading} className="w-full bg-gray-200 text-gray-700 p-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors disabled:opacity-50"> Cancel </button> )}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
 
 // Date Navigation Component
 const DateNavigation = ({ currentDate, onDateChange }) => {
@@ -1558,6 +1389,28 @@ const StudentDashboard = () => {
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [checkInClass, setCheckInClass] = useState(null);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [checkInStep, setCheckInStep] = useState('idle');
+  const startCheckIn = () => {
+    setCheckInStep('gps');
+    // Simulate the GPS check, then move to the scan step
+    setTimeout(() => {
+      console.log("GPS check passed (simulated).");
+      setCheckInStep('scan');
+    }, 1500); 
+  };
+  const handleScanSuccess = (scannedData) => {
+    console.log("A QR code was scanned. Data:", scannedData);
+    console.log("Accepting scan without verification and moving to next step.");
+
+    // Immediately move to the next step in the flow
+    setCheckInStep('biometric');
+    
+    // Simulate the biometric check, then move to the success step
+    setTimeout(() => {
+      console.log("Biometric check passed (simulated).");
+      setCheckInStep('success');
+    }, 1500);
+  };
 
   const sidebarItems = [
     { key: 'profile', label: 'Profile', icon: User },
