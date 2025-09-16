@@ -1315,7 +1315,7 @@ const ProfessorDashboard = () => {
           // Reset the UI after selection
           setShowUploadBoxFor(null);
           setOnlineSessionStarted(null);
-          setAttendanceSession(true);
+          
       }
   };
     return (
