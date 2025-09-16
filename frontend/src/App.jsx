@@ -179,17 +179,17 @@ const QRCodeGenerator = ({ classInfo, refreshRate = 5000 }) => {
 
 // Mock Data
 const mockUniversity = {
-  name: "Stanford University",
+  name: "Adani University",
   dean: "Dr. Sarah Johnson",
-  established: 1885,
-  location: "California, USA",
-  address: "450 Serra Mall, Stanford, CA 94305",
+  established: 2015,
+  location: "Ahmedabad, gujarat",
+  address: "Adani Shantigran",
   accreditation: "WASC Senior College and University Commission",
   totalStudents: 17249,
   totalFaculty: 2240,
   phone: "+1 (650) 723-2300",
-  email: "info@stanford.edu",
-  website: "www.stanford.edu"
+  email: "info@adani.edu",
+  website: "www.adani.edu"
 };
 
 const mockDepartments = [
@@ -236,8 +236,8 @@ const colors = { primaryBlue: 'bg-[#647FBC]', secondaryBlue: 'bg-[#91ADC8]', lig
 
 // Login Page Component
 const LoginPage = ({ onLogin, showSignup, toggleSignup }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("johnSmith@123");
+  const [password, setPassword] = useState("123");
   const [role, setRole] = useState('Student');
 
   const handleSubmit = (e) => {
@@ -1148,6 +1148,11 @@ const AdminDashboard = () => {
 
 // Professor Dashboard
 const ProfessorDashboard = () => {
+  // --- ADD THIS CODE AT THE TOP OF YOUR ProfessorDashboard COMPONENT ---
+
+// This state tracks which online class was started, so we can show the "Upload" button.
+  const [onlineSessionStarted, setOnlineSessionStarted] = useState(null);
+  const [showUploadBoxFor, setShowUploadBoxFor] = useState(null);
   const [activeView, setActiveView] = useState('profile');
   const [showQRModal, setShowQRModal] = useState(false);
   const [selectedClass, setSelectedClass] = useState(null);
@@ -1220,6 +1225,7 @@ const ProfessorDashboard = () => {
   };
   //Online Classes
   const handleStartOnlineClass = (classInfo) => {
+    
   // You can generate a dynamic Google Meet link based on the class,
   // or use a static one for now.
   const googleMeetLink = `https://meet.google.com/landing?authuser=0=${classInfo.id}`;
@@ -1229,6 +1235,7 @@ const ProfessorDashboard = () => {
 
   // You can also add state here to show a confirmation message, if needed.
   // For example, set a state variable like setOnlineSessionStarted(true);
+  setOnlineSessionStarted(classInfo);
 };
   const handleEndSession = () => {
     setShowQRModal(false);
@@ -1242,7 +1249,7 @@ const ProfessorDashboard = () => {
 
     // If the class is found and has a students array, update the session state.
     if (fullClassInfo && fullClassInfo.students) {
-      setDuplicateFlags(['Alex Johnson', 'David Brown']);
+      setDuplicateFlags(['Sarah Wilson', 'David Brown']);
       setAttendanceSession({
         class: fullClassInfo,
         students: fullClassInfo.students,
@@ -1300,7 +1307,17 @@ const ProfessorDashboard = () => {
 
   const renderSchedule = () => {
     const todaysSchedule = getTodaysSchedule() || [];
-    
+    const handleFileSelect = (event) => {
+      const file = event.target.files[0];
+      if (file) {
+          console.log("File selected:", file.name);
+          console.log("In a real app, you would now parse this file and submit the attendance.");
+          // Reset the UI after selection
+          setShowUploadBoxFor(null);
+          setOnlineSessionStarted(null);
+          setAttendanceSession(true);
+      }
+  };
     return (
       <div className="p-8">
         <h1 className="text-3xl font-bold mb-8">My Schedule</h1>
@@ -1311,25 +1328,56 @@ const ProfessorDashboard = () => {
           <div className="space-y-4">
             {todaysSchedule.length > 0 ? (
               todaysSchedule.map(cls => (
-                <div key={cls.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                  <div>
-                    <h3 className="font-semibold">{cls.subject}</h3>
-                    <p className="text-sm text-gray-600">{cls.time} • {cls.room}</p>
+                <div key={cls.id} className="border border-gray-200 rounded-lg">
+                  <div className="flex items-center justify-between p-4">
+                    <div>
+                      <h3 className="font-semibold">{cls.subject}</h3>
+                      <p className="text-sm text-gray-600">{cls.time} • {cls.room}</p>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <button
+                        onClick={() => handleStartQR(cls)}
+                        className={`${colors.primaryBlue} text-white px-4 py-2 rounded-lg font-medium hover:bg-[#5a73a8] transition-colors`}
+                      >
+                        Offline Attendance
+                      </button>
+                      <button 
+                        onClick={() => handleStartOnlineClass(cls)} 
+                        className={`${colors.primaryBlue} text-white px-4 py-2 rounded-lg font-medium hover:bg-[#7d9abd] transition-colors`}
+                      >
+                        Online Attendance
+                      </button>
+
+                      {/* --- NEW: Conditionally render the "Upload CSV" button --- */}
+                      {onlineSessionStarted && onlineSessionStarted.id === cls.id && (
+                        <button
+                          onClick={() => setShowUploadBoxFor(cls)}
+                          className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium animate-pulse"
+                        >
+                          Upload CSV
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex space-x-3">
-                    <button
-                      onClick={() => handleStartQR(cls)}
-                      className={`${colors.primaryBlue} text-white px-4 py-2 rounded-lg font-medium hover:bg-[#5a73a8] transition-colors`}
-                    >
-                      Offline Attendance
-                    </button>
-                    <button 
-                      onClick={() => handleStartOnlineClass(cls)} 
-                      className={`${colors.primaryBlue} text-white px-4 py-2 rounded-lg font-medium hover:bg-[#7d9abd] transition-colors`}
-                    >
-  Online Attendance
-</button>
-                  </div>
+
+                  {/* --- NEW: Conditionally render the small upload box --- */}
+                  {showUploadBoxFor && showUploadBoxFor.id === cls.id && (
+                    <div className="bg-gray-50 border-t p-4">
+                      <label 
+                        htmlFor={`file-upload-${cls.id}`} 
+                        className="w-full text-center cursor-pointer bg-white border border-gray-300 rounded-lg p-3 block hover:bg-gray-100"
+                      >
+                        Click to select participant list (.csv)
+                      </label>
+                      <input 
+                        id={`file-upload-${cls.id}`} 
+                        type="file" 
+                        accept=".csv"
+                        className="hidden"
+                        onChange={handleFileSelect}
+                      />
+                    </div>
+                  )}
                 </div>
               ))
             ) : (
@@ -1339,7 +1387,7 @@ const ProfessorDashboard = () => {
             )}
           </div>
         </div>
-
+        
         {attendanceSession && (
           <div className="mt-8 bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-xl font-semibold mb-4">Attendance Session: {attendanceSession.class.subject}</h2>
@@ -1381,6 +1429,26 @@ const ProfessorDashboard = () => {
                   </div>
                 </div>
               ))}
+              
+              <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <img
+                      src="https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=150"
+                      alt="Emma Davis"
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                    <div>
+                      <p className="font-medium">Emma Davis</p>
+                      <p className="text-sm text-gray-600">CS004</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input type="checkbox" className="form-checkbox" />
+                      <span className="text-sm">Absent</span>
+                    </label>
+                  </div>
+                </div>
             </div>
 
             <div className="mt-6 flex space-x-3">
@@ -1580,28 +1648,30 @@ const StudentDashboard = () => {
           <DateNavigation currentDate={currentDate} onDateChange={setCurrentDate} />
           
           <div className="space-y-4">
-            {todaysSchedule.map(cls => (
-              <div key={cls.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div>
-                  <h3 className="font-semibold">{cls.subject}</h3>
-                  <p className="text-sm text-gray-600">{cls.time} • {cls.room}</p>
-                  <p className="text-sm text-gray-600">Prof: {cls.professor}</p>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                    <span className="text-sm text-green-600 font-medium">Session Active</span>
-                  </div>
-                  <button
-                    onClick={() => handleCheckIn(cls)}
-                    className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors"
-                  >
-                    Check-In Now
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+  {todaysSchedule.map((cls, index) => (
+    <div key={cls.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+      <div>
+        <h3 className="font-semibold">{cls.subject}</h3>
+        <p className="text-sm text-gray-600">{cls.time} • {cls.room}</p>
+        <p className="text-sm text-gray-600">Prof: {cls.professor}</p>
+      </div>
+      <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2">
+          <div className={`w-3 h-3 rounded-full ${index === 0 ? 'bg-green-500' : 'bg-red-500'}`}></div>
+          <span className={`text-sm font-medium ${index === 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {index === 0 ? 'Session Active' : 'Session Not Started'}
+          </span>
+        </div>
+        <button
+          onClick={() => handleCheckIn(cls)}
+          className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors"
+        >
+          Check-In Now
+        </button>
+      </div>
+    </div>
+  ))}
+</div>
         </div>
 
         <CheckInModal
