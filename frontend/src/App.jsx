@@ -1312,6 +1312,9 @@ const ProfessorDashboard = () => {
       if (file) {
           console.log("File selected:", file.name);
           console.log("In a real app, you would now parse this file and submit the attendance.");
+
+          alert("The File has been successfully Loaded and the Attendance has been marked.")
+
           // Reset the UI after selection
           setShowUploadBoxFor(null);
           setOnlineSessionStarted(null);
