@@ -1,14 +1,14 @@
-**ClassSync - Modern University Attendance Management**
+**ClassSync - Modern University Attendance Management** <br />
 ClassSync is a comprehensive, secure, and modern attendance management platform designed for universities. It streamlines attendance tracking for both in-person and online classes through a robust multi-factor verification system, providing actionable insights for faculty and administrators.
 
-🔴 Live Demo
+🔴 Live Demo <br />
 Check out the live prototype deployed on Vercel:
 
 
-**✨ Key Features**
+**✨ Key Features**<br />
 ClassSync offers a tailored experience for every user role within the university ecosystem.
 
-**For Administrators:**
+**For Administrators:**<br />
 Centralized Dashboard: Get a high-level overview of university-wide attendance trends.
 
 Department & Program Management: Easily manage faculty, courses, and student rosters.
@@ -19,7 +19,7 @@ Security Auditing: Access detailed reports on flagged proxy attempts.
 
 In-depth Analytics: Identify at-risk students and track engagement patterns across departments.
 
-**For Professors:**
+**For Professors:**<br />
 Hybrid Attendance: Seamlessly manage attendance for both offline (in-person) and online classes.
 
 Live Attendance Sessions: Launch secure, real-time attendance sessions with a single click.
@@ -32,7 +32,7 @@ Manual Override & CSV Upload: Easily upload participant lists from online classe
 
 Class Analytics: Track attendance percentages for each student in every class.
 
-**For Students:**
+**For Students:**<br />
 Simple Check-in: A guided, multi-step process to securely mark attendance.
 
 Personal Dashboard: View personal details and overall attendance percentage.
@@ -41,7 +41,7 @@ Weekly Schedule: A clear view of their class schedule.
 
 Attendance Tracking: See a subject-wise breakdown of their attendance record with visual graphs.
 
-**🔐 The 5-Step Secure Verification Flow**
+**🔐 The 5-Step Secure Verification Flow**<br />
 Our core innovation is a multi-layered verification process that makes proxy attendance impractical and easily detectable.
 
 📍**GPS Geofence**: The student's app first verifies they are within the designated campus boundary. The check-in process cannot start otherwise.
@@ -54,7 +54,7 @@ Our core innovation is a multi-layered verification process that makes proxy att
 
 🚩 **Server-Side Duplicate Check**: Our backend cross-references the Device ID. If the same device is used for another student in the same session, both check-ins are flagged for administrative review.
 
-🛠️ Tech Stack
+🛠️ **Tech Stack**<br />
 This prototype was built with a modern web stack, with a clear roadmap to a native application.
 
 Category
