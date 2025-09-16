@@ -4,6 +4,8 @@ ClassSync is a comprehensive, secure, and modern attendance management platform 
 🔴 Live Demo <br />
 Check out the live prototype deployed on Vercel:
 
+<u>https://class-sync-pawzt37es-richa-guptas-projects-1d230eb9.vercel.app/</u>
+
 
 **✨ Key Features**<br />
 ClassSync offers a tailored experience for every user role within the university ecosystem.
