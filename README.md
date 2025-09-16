@@ -59,45 +59,8 @@ Our core innovation is a multi-layered verification process that makes proxy att
 🛠️ **Tech Stack**<br />
 This prototype was built with a modern web stack, with a clear roadmap to a native application.
 
-Category
+<img width="1742" height="1134" alt="image" src="https://github.com/user-attachments/assets/8d4f072a-d51b-4861-8b85-29e35e3e6a74" />
 
-Technology
-
-Frontend (Prototype)
-
-React.js, Vite, Tailwind CSS
-
-Frontend (Final App)
-
-React Native, NativeWind (for Tailwind)
-
-Web Dashboards
-
-Next.js, Shadcn/UI, Recharts
-
-Backend
-
-Node.js, Express.js
-
-Database
-
-MongoDB with MongoDB Atlas
-
-Real-time Engine
-
-Socket.IO
-
-Authentication
-
-JWT (JSON Web Tokens), bcrypt.js
-
-Geospatial
-
-Browser Geolocation API, Turf.js, Mongo GeoJSON
-
-Deployment
-
-Vercel
 
 🚀 How to Run This Project Locally
 Clone the repository:
