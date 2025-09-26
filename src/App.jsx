@@ -1,7 +1,7 @@
 import QRCodeScanner from './components/QRCodeGenerator.jsx'; // Assuming it's in the same folder
 import BiometricAuth from './components/BiometricAuth.jsx'; // Assuming it's in the same folder
 import { database } from '../src/firebase.js';
-import { ref, set } from "firebase/database";
+import { ref, set, get } from "firebase/database";
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
 	Users, 
@@ -440,124 +440,111 @@ const QRModal = ({ isOpen, onClose, onEndSession, classInfo }) => {
 };
 
 
-const CheckInModal = ({ isOpen, onClose, classInfo }) => { // Changed className to classInfo for clarity
-  const [step, setStep] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
-  const [scanError, setScanError] = useState(null);
-
-  const advanceStep = useCallback((nextStep) => {
-    setIsLoading(true);
-    setScanError(null);
-    setTimeout(() => { setIsLoading(false); setStep(nextStep); }, 500);
-  }, []);
-
-  const handleScanSuccess = useCallback((scannedNonce) => {
-    setIsLoading(true);
-    setScanError(null);
-    console.log(`%cSTUDENT: Scan successful. Scanned Nonce: ${scannedNonce}`, 'color: blue; font-weight: bold;');
-
-    if (!classInfo?.id) {
-        setScanError("Class information is missing. Cannot verify.");
-        setIsLoading(false);
-        return;
-    }
-
-    const verificationTimeout = setTimeout(() => {
-        setIsLoading(false);
-        setScanError("Verification timed out. Please check your network and try again.");
-    }, 10000);
-
-    const validNonceRef = ref(database, `sessions/${classInfo.id}/validNonce`);
-      
-    get(validNonceRef).then((snapshot) => {
-        clearTimeout(verificationTimeout);
-        const validNonce = snapshot.val();
-        
-        console.log(`%cSTUDENT: Received Nonce from Firebase: ${validNonce}`, 'color: purple; font-weight: bold;');
-      
-        if (scannedNonce === validNonce) {
-            console.log('%cSUCCESS: The nonces match!', 'color: green; font-weight: bold;');
-            advanceStep(3);
-        } else {
-            console.log('%cFAILURE: The nonces DO NOT match.', 'color: red; font-weight: bold;');
-            setScanError("Expired or invalid QR code. Please wait for the next one.");
-            setIsLoading(false);
-        }
-    }).catch((error) => {
-        clearTimeout(verificationTimeout);
-        console.error("Firebase read error:", error);
-        setScanError("Could not verify code. Check connection.");
-        setIsLoading(false);
-    });
-
-}, [advanceStep, classInfo]);
+const CheckInModal = ({ isOpen, onClose, classInfo }) => {
+	const [step, setStep] = useState(1);
+	const [isLoading, setIsLoading] = useState(false);
+	const [scanError, setScanError] = useState(null);
   
-  const handleBiometricSuccess = useCallback(() => { advanceStep(4); }, [advanceStep]);
-  const handleClose = () => { setStep(1); setScanError(null); onClose(); };
+	const advanceStep = useCallback((nextStep) => {
+	  setIsLoading(true);
+	  setScanError(null);
+	  setTimeout(() => { setIsLoading(false); setStep(nextStep); }, 500);
+	}, []);
   
-  useEffect(() => { if(isOpen) { setStep(1); setScanError(null); } }, [isOpen]);
-
-  if (!isOpen) return null;
-
-  const steps = [
-    { 
-      title: "Location Verification", 
-      icon: Navigation, 
-      content: (
-        <div>
-          <LocationVerification onSuccess={() => advanceStep(2)} />
-          {/* --- SKIP BUTTON RESTORED --- */}
-          <button
-              onClick={() => advanceStep(2)}
-              className="w-full mt-4 bg-yellow-500 text-black p-2 rounded-lg font-semibold"
-          >
-              (Test) Skip Location
-          </button>
-        </div>
-      )
-    },
-    { 
-      title: "QR Code Scanning", 
-      icon: QrCode, 
-      content: ( 
-        <div> 
-          <QRCodeScanner onScanSuccess={handleScanSuccess} onScanError={(err) => setScanError("Could not start camera.")} /> 
-          {scanError && <p className="text-red-500 text-center mt-3 text-sm font-semibold">{scanError}</p>} 
-          {isLoading && <p className="text-blue-500 text-center mt-3 text-sm font-semibold">Verifying...</p>}
-          {/* --- SKIP BUTTON RESTORED --- */}
-          <button 
-              onClick={() => advanceStep(3)} 
-              className="w-full mt-4 bg-yellow-500 text-black p-2 rounded-lg font-semibold"
-          >
-              (Test) Skip to Biometrics
-          </button> 
-        </div> 
-      )
-    },
-    { title: "Biometric Verification", icon: Fingerprint, content: <BiometricAuth onSuccess={handleBiometricSuccess} /> },
-    { title: "Success", icon: CheckCircle, content: <p className="text-center text-green-700">You are successfully marked present!</p>, actionText: "Complete", action: handleClose }
-  ];
-
-  const currentStep = steps[step - 1];
-
-  // The rest of your modal's JSX is unchanged
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full mx-4">
-        <h2 className="text-2xl font-bold text-center mb-2">Check-in: {classInfo?.subject}</h2>
-        <p className="text-center text-gray-600 mb-6">Step {step} of {steps.length}</p>
-        <div className="flex justify-center mb-6">{/* ... icon ... */}</div>
-        <h3 className="text-lg font-semibold text-center mb-2">{currentStep.title}</h3>
-        <div className="mb-6">{currentStep.content}</div>
-        {isLoading && <div className="flex justify-center my-4">{/* ... spinner ... */}</div>}
-        <div className="flex flex-col space-y-3">
-          {currentStep.actionText && !isLoading && <button onClick={currentStep.action}>{currentStep.actionText}</button>}
-          {step < 4 && <button onClick={handleClose} disabled={isLoading}>Cancel</button>}
-        </div>
-      </div>
-    </div>
-  );
-};
+	const handleScanSuccess = useCallback((scannedNonce) => {
+	  setIsLoading(true);
+	  setScanError(null);
+	  
+	  if (!classInfo?.id) {
+		  setScanError("Class information is missing.");
+		  setIsLoading(false);
+		  return;
+	  }
+  
+	  const validNonceRef = ref(database, `sessions/${classInfo.id}/validNonce`);
+		
+	  // Now that 'get' is imported, this line will work correctly.
+	  get(validNonceRef).then((snapshot) => {
+		const validNonce = snapshot.val();
+		
+		if (scannedNonce === validNonce) {
+		  advanceStep(3);
+		} else {
+		  setScanError("Expired or invalid QR code. Wait for the next one.");
+		  setIsLoading(false);
+		}
+	  }).catch((error) => {
+		console.error("Firebase read error:", error);
+		setScanError("Could not verify code. Check connection.");
+		setIsLoading(false);
+	  });
+  
+	}, [advanceStep, classInfo]);
+	
+	const handleBiometricSuccess = useCallback(() => { advanceStep(4); }, [advanceStep]);
+	const handleClose = () => { setStep(1); setScanError(null); onClose(); };
+	
+	useEffect(() => { if(isOpen) { setStep(1); setScanError(null); } }, [isOpen]);
+  
+	if (!isOpen) return null;
+  
+	const steps = [
+	  { 
+		title: "Location Verification", 
+		icon: Navigation, 
+		content: (
+		  <div>
+			<LocationVerification onSuccess={() => advanceStep(2)} />
+			<button
+				onClick={() => advanceStep(2)}
+				className="w-full mt-4 bg-yellow-500 text-black p-2 rounded-lg font-semibold"
+			>
+				(Test) Skip Location
+			</button>
+		  </div>
+		)
+	  },
+	  { 
+		title: "QR Code Scanning", 
+		icon: QrCode, 
+		content: ( 
+		  <div> 
+			<QRCodeScanner onScanSuccess={handleScanSuccess} onScanError={(err) => setScanError("Could not start camera.")} /> 
+			{scanError && <p className="text-red-500 text-center mt-3 text-sm font-semibold">{scanError}</p>} 
+			{isLoading && <p className="text-blue-500 text-center mt-3 text-sm font-semibold">Verifying...</p>}
+			<button 
+				onClick={() => advanceStep(3)} 
+				className="w-full mt-4 bg-yellow-500 text-black p-2 rounded-lg font-semibold"
+			>
+				(Test) Skip to Biometrics
+			</button> 
+		  </div> 
+		)
+	  },
+	  { title: "Biometric Verification", icon: Fingerprint, content: <BiometricAuth onSuccess={handleBiometricSuccess} /> },
+	  { title: "Success", icon: CheckCircle, content: <p className="text-center text-green-700">You are successfully marked present!</p>, actionText: "Complete", action: handleClose }
+	];
+  
+	const currentStep = steps[step - 1];
+  
+	// The rest of your modal's JSX is unchanged
+	return (
+	  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+		<div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full mx-4">
+		  <h2 className="text-2xl font-bold text-center mb-2">Check-in: {classInfo?.subject}</h2>
+		  <p className="text-center text-gray-600 mb-6">Step {step} of {steps.length}</p>
+		  <div className="flex justify-center mb-6">{/* ... icon ... */}</div>
+		  <h3 className="text-lg font-semibold text-center mb-2">{currentStep.title}</h3>
+		  <div className="mb-6">{currentStep.content}</div>
+		  {isLoading && <div className="flex justify-center my-4">{/* ... spinner ... */}</div>}
+		  <div className="flex flex-col space-y-3">
+			{currentStep.actionText && !isLoading && <button onClick={currentStep.action}>{currentStep.actionText}</button>}
+			{step < 4 && <button onClick={handleClose} disabled={isLoading}>Cancel</button>}
+		  </div>
+		</div>
+	  </div>
+	);
+  };
 
 
 
