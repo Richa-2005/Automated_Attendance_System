@@ -2,232 +2,234 @@ import QRCodeScanner from './components/QRCodeGenerator.jsx'; // Assuming it's i
 import BiometricAuth from './components/BiometricAuth.jsx'; // Assuming it's in the same folder
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
-  Users, 
-  BarChart3, 
-  Calendar, 
-  GraduationCap, 
-  QrCode, 
-  MapPin, 
-  Clock, 
-  CheckCircle, 
-  AlertTriangle, 
-  ChevronLeft, 
-  ChevronRight, 
-  User, 
-  Building2, 
-  BookOpen, 
-  Activity,
-  Eye,
-  Camera,
-  Fingerprint,
-  Navigation,
-  Award,
-  MapPin as Location,
-  Phone,
-  Mail,
-  X,
-  Loader
+	Users, 
+	BarChart3, 
+	Calendar, 
+	GraduationCap, 
+	QrCode, 
+	MapPin, 
+	Clock, 
+	CheckCircle, 
+	AlertTriangle, 
+	ChevronLeft, 
+	ChevronRight, 
+	User, 
+	Building2, 
+	BookOpen, 
+	Activity,
+	Eye,
+	Camera,
+	Fingerprint,
+	Navigation,
+	Award,
+	MapPin as Location,
+	Phone,
+	Mail,
+	X,
+	Loader,
+    // ADDED: Icon for the dropdown
+    ChevronDown 
 } from 'lucide-react';
 import * as turf from '@turf/turf';
 
 // --- Location Verification Component ---
 const LocationVerification = ({ onSuccess, onError }) => {
-  const [status, setStatus] = useState('pending'); // pending, getting, verifying, success, error
-  const [message, setMessage] = useState('Please grant location access to proceed.');
-  const [coords, setCoords] = useState("--");
-  const [accuracy, setAccuracy] = useState("--");
+	const [status, setStatus] = useState('pending'); // pending, getting, verifying, success, error
+	const [message, setMessage] = useState('Please grant location access to proceed.');
+	const [coords, setCoords] = useState("--");
+	const [accuracy, setAccuracy] = useState("--");
 
-  const geofences = {
-    campus: {
-      name: "Adani University Campus",
-      center: [72.544496, 23.156516], // [Longitude, Latitude] for Turf.js
-      radius: 500, // User must be within 500 meters.
-    },
-  };
+	const geofences = {
+		campus: {
+			name: "Adani University Campus",
+			center: [72.544496, 23.156516], // [Longitude, Latitude] for Turf.js
+			radius: 500, // User must be within 500 meters.
+		},
+	};
 
-  const getDistance = (from, to) => {
-    const fromPoint = turf.point(from);
-    const toPoint = turf.point(to);
-    return turf.distance(fromPoint, toPoint, { units: "meters" });
-  };
+	const getDistance = (from, to) => {
+		const fromPoint = turf.point(from);
+		const toPoint = turf.point(to);
+		return turf.distance(fromPoint, toPoint, { units: "meters" });
+	};
 
-  const handleVerifyLocation = () => {
-    setStatus('getting');
-    setMessage('Accessing your location...');
+	const handleVerifyLocation = () => {
+		setStatus('getting');
+		setMessage('Accessing your location...');
 
-    if (!navigator.geolocation || typeof turf === 'undefined') {
-      const errorMsg = !navigator.geolocation ? 'Geolocation is not supported by your browser.' : 'Location library (turf.js) not loaded.';
-      setStatus('error');
-      setMessage(errorMsg);
-      onError(errorMsg);
-      return;
-    }
+		if (!navigator.geolocation || typeof turf === 'undefined') {
+			const errorMsg = !navigator.geolocation ? 'Geolocation is not supported by your browser.' : 'Location library (turf.js) not loaded.';
+			setStatus('error');
+			setMessage(errorMsg);
+			onError(errorMsg);
+			return;
+		}
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setStatus('verifying');
-        setMessage('Comparing your location to campus...');
-        const { latitude, longitude, accuracy: accuracyMeters } = position.coords;
+		navigator.geolocation.getCurrentPosition(
+			(position) => {
+				setStatus('verifying');
+				setMessage('Comparing your location to campus...');
+				const { latitude, longitude, accuracy: accuracyMeters } = position.coords;
 
-        setCoords(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
-        setAccuracy(`${accuracyMeters.toFixed(1)} meters`);
+				setCoords(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+				setAccuracy(`${accuracyMeters.toFixed(1)} meters`);
 
-        const userLocation = [longitude, latitude];
-        const geofence = geofences.campus;
-        const distance = getDistance(userLocation, geofence.center);
+				const userLocation = [longitude, latitude];
+				const geofence = geofences.campus;
+				const distance = getDistance(userLocation, geofence.center);
 
-        setTimeout(() => { // Simulate verification delay
-          if (distance <= geofence.radius) {
-            setStatus('success');
-            setMessage(`Location verified! You are inside ${geofence.name}.`);
-            setTimeout(onSuccess, 1200); 
-          } else {
-            setStatus('error');
-            const distanceKm = (distance / 1000).toFixed(2);
-            setMessage(`You are outside the campus area by ${distanceKm} km.`);
-            onError('User is not within the required radius.');
-          }
-        }, 1500);
-      },
-      (error) => {
-        setStatus('error');
-        const errorMessage = "Could not get your location. Please check browser permissions.";
-        setMessage(errorMessage);
-        onError(errorMessage);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
-  };
+				setTimeout(() => { // Simulate verification delay
+					if (distance <= geofence.radius) {
+						setStatus('success');
+						setMessage(`Location verified! You are inside ${geofence.name}.`);
+						setTimeout(onSuccess, 1200);	
+					} else {
+						setStatus('error');
+						const distanceKm = (distance / 1000).toFixed(2);
+						setMessage(`You are outside the campus area by ${distanceKm} km.`);
+						onError('User is not within the required radius.');
+					}
+				}, 1500);
+			},
+			(error) => {
+				setStatus('error');
+				const errorMessage = "Could not get your location. Please check browser permissions.";
+				setMessage(errorMessage);
+				onError(errorMessage);
+			},
+			{ enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+		);
+	};
 
-  const renderStatusInfo = () => {
-      let icon = <Loader className="w-8 h-8 text-gray-500 animate-spin" />;
-      let color = 'bg-gray-100';
+	const renderStatusInfo = () => {
+		let icon = <Loader className="w-8 h-8 text-gray-500 animate-spin" />;
+		let color = 'bg-gray-100';
 
-      if(status === 'pending') icon = <Navigation className="w-8 h-8 text-blue-500" />;
-      if(status === 'success') { icon = <CheckCircle className="w-8 h-8 text-green-600" />; color = 'bg-green-100'; }
-      if(status === 'error') { icon = <X className="w-8 h-8 text-red-600" />; color = 'bg-red-100'; }
-      
-      return (
-        <div className={`p-4 rounded-lg text-center ${color} mb-4`}>
-            <div className="flex justify-center items-center h-10 mb-2">{icon}</div>
-            <p className="text-sm font-semibold">{message}</p>
-        </div>
-      );
-  }
+		if(status === 'pending') icon = <Navigation className="w-8 h-8 text-blue-500" />;
+		if(status === 'success') { icon = <CheckCircle className="w-8 h-8 text-green-600" />; color = 'bg-green-100'; }
+		if(status === 'error') { icon = <X className="w-8 h-8 text-red-600" />; color = 'bg-red-100'; }
+		
+		return (
+			<div className={`p-4 rounded-lg text-center ${color} mb-4`}>
+				<div className="flex justify-center items-center h-10 mb-2">{icon}</div>
+				<p className="text-sm font-semibold">{message}</p>
+			</div>
+		);
+	}
 
-  return (
-    <div className="text-center p-2">
-      {renderStatusInfo()}
-      <div className="bg-gray-50 p-3 rounded-lg text-xs text-gray-600 mb-4 text-left">
-        <p><strong>Your Location:</strong> {coords}</p>
-        <p><strong>Accuracy:</strong> {accuracy}</p>
-      </div>
-      {status === 'pending' && (
-        <button
-          onClick={handleVerifyLocation}
-          className="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          Verify My Location
-        </button>
-      )}
-    </div>
-  );
+	return (
+		<div className="text-center p-2">
+			{renderStatusInfo()}
+			<div className="bg-gray-50 p-3 rounded-lg text-xs text-gray-600 mb-4 text-left">
+				<p><strong>Your Location:</strong> {coords}</p>
+				<p><strong>Accuracy:</strong> {accuracy}</p>
+			</div>
+			{status === 'pending' && (
+				<button
+					onClick={handleVerifyLocation}
+					className="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+				>
+					Verify My Location
+				</button>
+			)}
+		</div>
+	);
 };
 
 
 // --- QR Code Generator Component ---
 // This can also be moved to its own file if you like
 const QRCodeGenerator = ({ classInfo, refreshRate = 5000 }) => {
-  const [qrValue, setQrValue] = useState('');
-  const qrRef = useRef(null);
+	const [qrValue, setQrValue] = useState('');
+	const qrRef = useRef(null);
 
-  useEffect(() => {
-    const generateQrValue = () => {
-      const timestamp = Date.now();
-      const data = JSON.stringify({
-        classId: classInfo?.id || 'default-class-id',
-        subject: classInfo?.subject || 'default-subject',
-        timestamp: timestamp,
-      });
-      setQrValue(data);
-    };
-    generateQrValue();
-    const intervalId = setInterval(generateQrValue, refreshRate);
-    return () => clearInterval(intervalId);
-  }, [classInfo, refreshRate]);
+	useEffect(() => {
+		const generateQrValue = () => {
+			const timestamp = Date.now();
+			const data = JSON.stringify({
+				classId: classInfo?.id || 'default-class-id',
+				subject: classInfo?.subject || 'default-subject',
+				timestamp: timestamp,
+			});
+			setQrValue(data);
+		};
+		generateQrValue();
+		const intervalId = setInterval(generateQrValue, refreshRate);
+		return () => clearInterval(intervalId);
+	}, [classInfo, refreshRate]);
 
-  useEffect(() => {
-    if (qrValue && qrRef.current && typeof QRCode !== 'undefined') {
-        qrRef.current.innerHTML = '';
-        new QRCode(qrRef.current, {
-            text: qrValue,
-            width: 192,
-            height: 192,
-            colorDark : "#000000",
-            colorLight : "#ffffff",
-            correctLevel : QRCode.CorrectLevel.H
-        });
-    }
-  }, [qrValue]);
+	useEffect(() => {
+		if (qrValue && qrRef.current && typeof QRCode !== 'undefined') {
+			qrRef.current.innerHTML = '';
+			new QRCode(qrRef.current, {
+				text: qrValue,
+				width: 192,
+				height: 192,
+				colorDark : "#000000",
+				colorLight : "#ffffff",
+				correctLevel : QRCode.CorrectLevel.H
+			});
+		}
+	}, [qrValue]);
 
-  return (
-    <div className="bg-white p-4 rounded-lg shadow-inner flex items-center justify-center w-[224px] h-[224px]">
-      <div ref={qrRef} />
-    </div>
-  );
+	return (
+		<div className="bg-white p-4 rounded-lg shadow-inner flex items-center justify-center w-[224px] h-[224px]">
+			<div ref={qrRef} />
+		</div>
+	);
 };
 
 // Mock Data
 const mockUniversity = {
-  name: "Adani University",
-  dean: "Dr. Sarah Johnson",
-  established: 2015,
-  location: "Ahmedabad, gujarat",
-  address: "Adani Shantigran",
-  accreditation: "WASC Senior College and University Commission",
-  totalStudents: 17249,
-  totalFaculty: 2240,
-  phone: "+1 (650) 723-2300",
-  email: "info@adani.edu",
-  website: "www.adani.edu"
+	name: "Adani University",
+	dean: "Dr. Sarah Johnson",
+	established: 2015,
+	location: "Ahmedabad, gujarat",
+	address: "Adani Shantigran",
+	accreditation: "WASC Senior College and University Commission",
+	totalStudents: 17249,
+	totalFaculty: 2240,
+	phone: "+1 (650) 723-2300",
+	email: "info@adani.edu",
+	website: "www.adani.edu"
 };
 
 const mockDepartments = [
-  { id: 1, name: "Computer Science", faculty: 12, students: 450 },
-  { id: 2, name: "Electrical Engineering", faculty: 8, students: 320 },
-  { id: 3, name: "Mechanical Engineering", faculty: 10, students: 380 },
-  { id: 4, name: "Business Administration", faculty: 15, students: 600 }
+	{ id: 1, name: "Computer Science", faculty: 12, students: 450 },
+	{ id: 2, name: "Electrical Engineering", faculty: 8, students: 320 },
+	{ id: 3, name: "Mechanical Engineering", faculty: 10, students: 380 },
+	{ id: 4, name: "Business Administration", faculty: 15, students: 600 }
 ];
 
 const mockFaculty = {
-  1: [
-    { id: 1, name: "Dr. John Smith", joined: 2018, photo: "https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg?auto=compress&cs=tinysrgb&w=150", qualification: "Ph.D. in Computer Science", role: "Associate Professor", subjects: ["Data Structures", "Algorithms", "Database Systems"] },
-    { id: 2, name: "Dr. Emily Davis", joined: 2020, photo: "https://images.pexels.com/photos/3762800/pexels-photo-3762800.jpeg?auto=compress&cs=tinysrgb&w=150", qualification: "Ph.D. in Software Engineering", role: "Assistant Professor", subjects: ["Web Development", "Software Engineering", "Mobile App Development"] },
-    { id: 3, name: "Prof. Michael Chen", joined: 2019, photo: "https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg?auto=compress&cs=tinysrgb&w=150", qualification: "Ph.D. in Artificial Intelligence", role: "Professor & HOD", subjects: ["Machine Learning", "Artificial Intelligence", "Deep Learning"] }
-  ]
+	1: [
+		{ id: 1, name: "Dr. John Smith", joined: 2018, photo: "https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg?auto=compress&cs=tinysrgb&w=150", qualification: "Ph.D. in Computer Science", role: "Associate Professor", subjects: ["Data Structures", "Algorithms", "Database Systems"] },
+		{ id: 2, name: "Dr. Emily Davis", joined: 2020, photo: "https://images.pexels.com/photos/3762800/pexels-photo-3762800.jpeg?auto=compress&cs=tinysrgb&w=150", qualification: "Ph.D. in Software Engineering", role: "Assistant Professor", subjects: ["Web Development", "Software Engineering", "Mobile App Development"] },
+		{ id: 3, name: "Prof. Michael Chen", joined: 2019, photo: "https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg?auto=compress&cs=tinysrgb&w=150", qualification: "Ph.D. in Artificial Intelligence", role: "Professor & HOD", subjects: ["Machine Learning", "Artificial Intelligence", "Deep Learning"] }
+	]
 };
 
 const mockPrograms = [
-  { id: 1, name: "B.Tech Computer Science", sections: ["A", "B", "C"], totalStudents: 180 },
-  { id: 2, name: "M.Tech Software Engineering", sections: ["A", "B"], totalStudents: 80 },
-  { id: 3, name: "MBA Technology Management", sections: ["A"], totalStudents: 40 }
+	{ id: 1, name: "B.Tech Computer Science", sections: ["A", "B", "C"], totalStudents: 180 },
+	{ id: 2, name: "M.Tech Software Engineering", sections: ["A", "B"], totalStudents: 80 },
+	{ id: 3, name: "MBA Technology Management", sections: ["A"], totalStudents: 40 }
 ];
 
 const mockStudents = {
-  "1-A": [ { id: 1, name: "Alex Johnson", rollNo: "CS001", attendance: 85, photo: "https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=150", admissionNo: "ADM2023001", admissionYear: 2023, degree: "B.Tech", department: "Computer Science", semester: "6th Semester", courseName: "Computer Science and Engineering", college: "Stanford University", curriculumPlan: "2023-2027 Curriculum", studentStatus: "Active", subjectAttendance: { "Data Structures": 88, "Algorithms": 82, "Database Systems": 90, "Web Development": 80 } }, { id: 2, name: "Sarah Wilson", rollNo: "CS002", attendance: 92, photo: "https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=150", admissionNo: "ADM2023002", admissionYear: 2023, degree: "B.Tech", department: "Computer Science", semester: "6th Semester", courseName: "Computer Science and Engineering", college: "Stanford University", curriculumPlan: "2023-2027 Curriculum", studentStatus: "Active", subjectAttendance: { "Data Structures": 95, "Algorithms": 90, "Database Systems": 94, "Web Development": 89 } }, { id: 3, name: "David Brown", rollNo: "CS003", attendance: 68, photo: "https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=150", admissionNo: "ADM2023003", admissionYear: 2023, degree: "B.Tech", department: "Computer Science", semester: "6th Semester", courseName: "Computer Science and Engineering", college: "Stanford University", curriculumPlan: "2023-2027 Curriculum", studentStatus: "Active", subjectAttendance: { "Data Structures": 70, "Algorithms": 65, "Database Systems": 72, "Web Development": 66 } } ],
-  "1-B": [ { id: 4, name: "Emma Davis", rollNo: "CS004", attendance: 78, photo: "https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=150", admissionNo: "ADM2023004", admissionYear: 2023, degree: "B.Tech", department: "Computer Science", semester: "6th Semester", courseName: "Computer Science and Engineering", college: "Stanford University", curriculumPlan: "2023-2027 Curriculum", studentStatus: "Active", subjectAttendance: { "Web Development": 80, "Software Engineering": 76, "Mobile App Development": 78, "Computer Networks": 77 } }, { id: 5, name: "James Wilson", rollNo: "CS005", attendance: 72, photo: "https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=150", admissionNo: "ADM2023005", admissionYear: 2023, degree: "B.Tech", department: "Computer Science", semester: "6th Semester", courseName: "Computer Science and Engineering", college: "Stanford University", curriculumPlan: "2023-2027 Curriculum", studentStatus: "Active", subjectAttendance: { "Web Development": 74, "Software Engineering": 70, "Mobile App Development": 73, "Computer Networks": 71 } } ],
-  "1-C": [ { id: 6, name: "Lisa Chen", rollNo: "CS006", attendance: 89, photo: "https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=150", admissionNo: "ADM2023006", admissionYear: 2023, degree: "B.Tech", department: "Computer Science", semester: "6th Semester", courseName: "Computer Science and Engineering", college: "Stanford University", curriculumPlan: "2023-2027 Curriculum", studentStatus: "Active", subjectAttendance: { "Machine Learning": 92, "Artificial Intelligence": 87, "Deep Learning": 90, "Data Mining": 88 } } ]
+	"1-A": [ { id: 1, name: "Alex Johnson", rollNo: "CS001", attendance: 85, photo: "https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=150", admissionNo: "ADM2023001", admissionYear: 2023, degree: "B.Tech", department: "Computer Science", semester: "6th Semester", courseName: "Computer Science and Engineering", college: "Stanford University", curriculumPlan: "2023-2027 Curriculum", studentStatus: "Active", subjectAttendance: { "Data Structures": 88, "Algorithms": 82, "Database Systems": 90, "Web Development": 80 } }, { id: 2, name: "Sarah Wilson", rollNo: "CS002", attendance: 92, photo: "https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=150", admissionNo: "ADM2023002", admissionYear: 2023, degree: "B.Tech", department: "Computer Science", semester: "6th Semester", courseName: "Computer Science and Engineering", college: "Stanford University", curriculumPlan: "2023-2027 Curriculum", studentStatus: "Active", subjectAttendance: { "Data Structures": 95, "Algorithms": 90, "Database Systems": 94, "Web Development": 89 } }, { id: 3, name: "David Brown", rollNo: "CS003", attendance: 68, photo: "https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=150", admissionNo: "ADM2023003", admissionYear: 2023, degree: "B.Tech", department: "Computer Science", semester: "6th Semester", courseName: "Computer Science and Engineering", college: "Stanford University", curriculumPlan: "2023-2027 Curriculum", studentStatus: "Active", subjectAttendance: { "Data Structures": 70, "Algorithms": 65, "Database Systems": 72, "Web Development": 66 } } ],
+	"1-B": [ { id: 4, name: "Emma Davis", rollNo: "CS004", attendance: 78, photo: "https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=150", admissionNo: "ADM2023004", admissionYear: 2023, degree: "B.Tech", department: "Computer Science", semester: "6th Semester", courseName: "Computer Science and Engineering", college: "Stanford University", curriculumPlan: "2023-2027 Curriculum", studentStatus: "Active", subjectAttendance: { "Web Development": 80, "Software Engineering": 76, "Mobile App Development": 78, "Computer Networks": 77 } }, { id: 5, name: "James Wilson", rollNo: "CS005", attendance: 72, photo: "https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=150", admissionNo: "ADM2023005", admissionYear: 2023, degree: "B.Tech", department: "Computer Science", semester: "6th Semester", courseName: "Computer Science and Engineering", college: "Stanford University", curriculumPlan: "2023-2027 Curriculum", studentStatus: "Active", subjectAttendance: { "Web Development": 74, "Software Engineering": 70, "Mobile App Development": 73, "Computer Networks": 71 } } ],
+	"1-C": [ { id: 6, name: "Lisa Chen", rollNo: "CS006", attendance: 89, photo: "https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=150", admissionNo: "ADM2023006", admissionYear: 2023, degree: "B.Tech", department: "Computer Science", semester: "6th Semester", courseName: "Computer Science and Engineering", college: "Stanford University", curriculumPlan: "2023-2027 Curriculum", studentStatus: "Active", subjectAttendance: { "Machine Learning": 92, "Artificial Intelligence": 87, "Deep Learning": 90, "Data Mining": 88 } } ]
 };
 
 const generateWeeklySchedule = () => {
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-  const timeSlots = ['09:00-10:00', '10:00-11:00', '11:00-12:00', '14:00-15:00'];
-  const subjects = ['Data Structures', 'Algorithms', 'Database Systems', 'Web Development'];
-  const schedule = {};
-  days.forEach(day => {
-    schedule[day] = timeSlots.map((time, index) => ({ id: `${day}-${index}`, subject: subjects[index], time: time, room: `Room ${101 + index}`, professor: 'Dr. John Smith' }));
-  });
-  return schedule;
+	const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+	const timeSlots = ['09:00-10:00', '10:00-11:00', '11:00-12:00', '14:00-15:00'];
+	const subjects = ['Data Structures', 'Algorithms', 'Database Systems', 'Web Development'];
+	const schedule = {};
+	days.forEach(day => {
+		schedule[day] = timeSlots.map((time, index) => ({ id: `${day}-${index}`, subject: subjects[index], time: time, room: `Room ${101 + index}`, professor: 'Dr. John Smith' }));
+	});
+	return schedule;
 };
 
 const mockSchedule = generateWeeklySchedule();
@@ -236,1442 +238,1516 @@ const colors = { primaryBlue: 'bg-[#647FBC]', secondaryBlue: 'bg-[#91ADC8]', lig
 
 // Login Page Component
 const LoginPage = ({ onLogin, showSignup, toggleSignup }) => {
-  const [email, setEmail] = useState("johnSmith@123");
-  const [password, setPassword] = useState("123");
-  const [role, setRole] = useState('Student');
+	const [email, setEmail] = useState("johnSmith@123");
+	const [password, setPassword] = useState("123");
+	const [role, setRole] = useState('Professor'); // Default to Professor for quick demo login
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onLogin(role, email);
-  };
+	const handleSubmit = (e) => {
+		e.preventDefault();
+		onLogin(role, email);
+	};
 
-  const features = [
-    { icon: Users, title: "User Management", desc: "Comprehensive role-based access control" },
-    { icon: QrCode, title: "Smart Attendance", desc: "QR code and biometric verification" },
-    { icon: BarChart3, title: "Analytics Dashboard", desc: "Real-time attendance insights" },
-    { icon: BookOpen, title: "Course Integration", desc: "Seamless academic management" }
-  ];
+	const features = [
+		{ icon: Users, title: "User Management", desc: "Comprehensive role-based access control" },
+		{ icon: QrCode, title: "Smart Attendance", desc: "QR code and biometric verification" },
+		{ icon: BarChart3, title: "Analytics Dashboard", desc: "Real-time attendance insights" },
+		{ icon: BookOpen, title: "Course Integration", desc: "Seamless academic management" }
+	];
 
-  if (showSignup) {
-    return (
-      <div className="min-h-screen flex">
-        <div className={`flex-1 ${colors.lightTeal} p-12 flex flex-col justify-center`}>
-          <h1 className="text-4xl font-bold text-gray-800 mb-4">Join ClassSync</h1>
-          <p className="text-gray-600 mb-8">Create your account to get started with modern attendance management.</p>
-          
-          <div className="grid grid-cols-2 gap-6">
-            {features.map((feature, index) => (
-              <div key={index} className="bg-white p-6 rounded-xl shadow-sm">
-                <feature.icon className={`w-8 h-8 ${colors.primaryBlueText} mb-3`} />
-                <h3 className="font-semibold mb-2">{feature.title}</h3>
-                <p className="text-sm text-gray-600">{feature.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+	if (showSignup) {
+		return (
+			<div className="min-h-screen flex">
+				<div className={`flex-1 ${colors.lightTeal} p-12 flex flex-col justify-center`}>
+					<h1 className="text-4xl font-bold text-gray-800 mb-4">Join ClassSync</h1>
+					<p className="text-gray-600 mb-8">Create your account to get started with modern attendance management.</p>
+					
+					<div className="grid grid-cols-2 gap-6">
+						{features.map((feature, index) => (
+							<div key={index} className="bg-white p-6 rounded-xl shadow-sm">
+								<feature.icon className={`w-8 h-8 ${colors.primaryBlueText} mb-3`} />
+								<h3 className="font-semibold mb-2">{feature.title}</h3>
+								<p className="text-sm text-gray-600">{feature.desc}</p>
+							</div>
+						))}
+					</div>
+				</div>
 
-        <div className="flex-1 flex items-center justify-center p-8">
-          <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
-            <h2 className="text-3xl font-bold text-center mb-8">Create Account</h2>
-            
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <input type="text" placeholder="Full Name" className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]" required />
-              <input type="email" placeholder="Email Address" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]" required />
-              <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]" required />
-              <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]">
-                <option>Student</option>
-                <option>Professor</option>
-                <option>Admin</option>
-              </select>
-              <button type="submit" className={`w-full ${colors.primaryBlue} text-white p-4 rounded-lg font-semibold hover:bg-[#5a73a8] transition-colors`}> Create Account </button>
-            </form>
+				<div className="flex-1 flex items-center justify-center p-8">
+					<div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
+						<h2 className="text-3xl font-bold text-center mb-8">Create Account</h2>
+						
+						<form onSubmit={handleSubmit} className="space-y-6">
+							<input type="text" placeholder="Full Name" className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]" required />
+							<input type="email" placeholder="Email Address" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]" required />
+							<input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]" required />
+							<select value={role} onChange={(e) => setRole(e.target.value)} className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]">
+								<option>Student</option>
+								<option>Professor</option>
+								<option>Admin</option>
+							</select>
+							<button type="submit" className={`w-full ${colors.primaryBlue} text-white p-4 rounded-lg font-semibold hover:bg-[#5a73a8] transition-colors`}> Create Account </button>
+						</form>
 
-            <p className="text-center mt-6 text-gray-600">
-              Already have an account?{' '}
-              <button onClick={toggleSignup} className={`${colors.primaryBlueText} hover:underline font-semibold`}> Sign In </button>
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+						<p className="text-center mt-6 text-gray-600">
+							Already have an account?{' '}
+							<button onClick={toggleSignup} className={`${colors.primaryBlueText} hover:underline font-semibold`}> Sign In </button>
+						</p>
+					</div>
+				</div>
+			</div>
+		);
+	}
 
-  return (
-    <div className="min-h-screen flex">
-      <div className={`flex-1 ${colors.lightTeal} p-12 flex flex-col justify-center`}>
-        <h1 className="text-4xl font-bold text-gray-800 mb-4">Modern University Attendance Management</h1>
-        <p className="text-gray-600 mb-8">Streamline your educational experience with intelligent attendance tracking and comprehensive analytics.</p>
-        <div className="grid grid-cols-2 gap-6">
-          {features.map((feature, index) => (
-            <div key={index} className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow">
-              <feature.icon className={`w-8 h-8 ${colors.primaryBlueText} mb-3`} />
-              <h3 className="font-semibold mb-2">{feature.title}</h3>
-              <p className="text-sm text-gray-600">{feature.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+	return (
+		<div className="min-h-screen flex">
+			<div className={`flex-1 ${colors.lightTeal} p-12 flex flex-col justify-center`}>
+				<h1 className="text-4xl font-bold text-gray-800 mb-4">Modern University Attendance Management</h1>
+				<p className="text-gray-600 mb-8">Streamline your educational experience with intelligent attendance tracking and comprehensive analytics.</p>
+				<div className="grid grid-cols-2 gap-6">
+					{features.map((feature, index) => (
+						<div key={index} className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+							<feature.icon className={`w-8 h-8 ${colors.primaryBlueText} mb-3`} />
+							<h3 className="font-semibold mb-2">{feature.title}</h3>
+							<p className="text-sm text-gray-600">{feature.desc}</p>
+						</div>
+					))}
+				</div>
+			</div>
 
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
-          <h2 className="text-3xl font-bold text-center mb-8">Welcome Back</h2>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <input type="email" placeholder="Email Address" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]" required />
-            <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]" required />
-            <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]">
-              <option>Student</option>
-              <option>Professor</option>
-              <option>Admin</option>
-            </select>
-            <button type="submit" className={`w-full ${colors.primaryBlue} text-white p-4 rounded-lg font-semibold hover:bg-[#5a73a8] transition-colors`}> Sign In </button>
-          </form>
+			<div className="flex-1 flex items-center justify-center p-8">
+				<div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
+					<h2 className="text-3xl font-bold text-center mb-8">Welcome Back</h2>
+					<form onSubmit={handleSubmit} className="space-y-6">
+						<input type="email" placeholder="Email Address" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]" required />
+						<input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]" required />
+						<select value={role} onChange={(e) => setRole(e.target.value)} className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#647FBC]">
+							<option>Student</option>
+							<option>Professor</option>
+							<option>Admin</option>
+						</select>
+						<button type="submit" className={`w-full ${colors.primaryBlue} text-white p-4 rounded-lg font-semibold hover:bg-[#5a73a8] transition-colors`}> Sign In </button>
+					</form>
 
-          <p className="text-center mt-6 text-gray-600">
-            Don't have an account?{' '}
-            <button onClick={toggleSignup} className={`${colors.primaryBlueText} hover:underline font-semibold`}> Sign Up </button>
-          </p>
-        </div>
-      </div>
-    </div>
-  );
+					<p className="text-center mt-6 text-gray-600">
+						Don't have an account?{' '}
+						<button onClick={toggleSignup} className={`${colors.primaryBlueText} hover:underline font-semibold`}> Sign Up </button>
+					</p>
+				</div>
+			</div>
+		</div>
+	);
 };
 
 // Sidebar Component
 const Sidebar = ({ activeView, setActiveView, items, userRole }) => {
-  return (
-    <div className={`w-64 ${colors.primaryBlue} text-white p-6 min-h-screen`}>
-      <div className="mb-8">
-        <h2 className="text-xl font-bold">ClassSync</h2>
-        <p className="text-sm opacity-75">{userRole}</p>
-      </div>
-      <nav className="space-y-2">
-        {items.map((item) => (
-          <button
-            key={item.key}
-            onClick={() => setActiveView(item.key)}
-            className={`w-full text-left p-3 rounded-lg flex items-center space-x-3 transition-colors ${
-              activeView === item.key ? 'bg-white/20' : 'hover:bg-white/10'
-            }`}
-          >
-            <item.icon className="w-5 h-5" />
-            <span>{item.label}</span>
-          </button>
-        ))}
-      </nav>
-    </div>
-  );
+	return (
+		<div className={`w-64 ${colors.primaryBlue} text-white p-6 min-h-screen`}>
+			<div className="mb-8">
+				<h2 className="text-xl font-bold">ClassSync</h2>
+				<p className="text-sm opacity-75">{userRole}</p>
+			</div>
+			<nav className="space-y-2">
+				{items.map((item) => (
+					<button
+						key={item.key}
+						onClick={() => setActiveView(item.key)}
+						className={`w-full text-left p-3 rounded-lg flex items-center space-x-3 transition-colors ${
+							activeView === item.key ? 'bg-white/20' : 'hover:bg-white/10'
+						}`}
+					>
+						<item.icon className="w-5 h-5" />
+						<span>{item.label}</span>
+					</button>
+				))}
+			</nav>
+		</div>
+	);
 };
 
 // Bar Chart Component
 const BarChart = ({ data, title }) => {
-  const maxValue = data.length > 0 ? Math.max(...data.map(d => d.value)) : 0;
-  return (
-    <div className="bg-white p-6 rounded-xl shadow-sm">
-      <h3 className="text-lg font-semibold mb-4">{title}</h3>
-      <div className="space-y-3">
-        {data.map((item, index) => (
-          <div key={index} className="flex items-center space-x-3">
-            <div className="w-32 text-sm truncate">{item.label}</div>
-            <div className="flex-1 bg-gray-200 rounded-full h-4 relative">
-              <div
-                className={`${colors.primaryBlue} h-4 rounded-full transition-all duration-500`}
-                style={{ width: `${maxValue > 0 ? (item.value / maxValue) * 100 : 0}%` }}
-              />
-            </div>
-            <div className="w-12 text-sm text-gray-600">{item.value}%</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+	const maxValue = data.length > 0 ? Math.max(...data.map(d => d.value)) : 0;
+	return (
+		<div className="bg-white p-6 rounded-xl shadow-sm">
+			<h3 className="text-lg font-semibold mb-4">{title}</h3>
+			<div className="space-y-3">
+				{data.map((item, index) => (
+					<div key={index} className="flex items-center space-x-3">
+						<div className="w-32 text-sm truncate">{item.label}</div>
+						<div className="flex-1 bg-gray-200 rounded-full h-4 relative">
+							<div
+								className={`${colors.primaryBlue} h-4 rounded-full transition-all duration-500`}
+								style={{ width: `${maxValue > 0 ? (item.value / maxValue) * 100 : 0}%` }}
+							/>
+						</div>
+						<div className="w-12 text-sm text-gray-600">{item.value}%</div>
+					</div>
+				))}
+			</div>
+		</div>
+	);
 };
 
 // QR Modal Component for Professor
 const QRModal = ({ isOpen, onClose, onEndSession, classInfo }) => {
-  const [timeLeft, setTimeLeft] = useState(300);
-  useEffect(() => {
-    if (!isOpen) { setTimeLeft(300); return; }
-    if (timeLeft === 0) { onEndSession(); return; }
-    const timerId = setInterval(() => { setTimeLeft((prevTime) => prevTime - 1); }, 1000);
-    return () => clearInterval(timerId);
-  }, [isOpen, timeLeft, onEndSession]);
+	const [timeLeft, setTimeLeft] = useState(300);
+	useEffect(() => {
+		if (!isOpen) { setTimeLeft(300); return; }
+		if (timeLeft === 0) { onEndSession(); return; }
+		const timerId = setInterval(() => { setTimeLeft((prevTime) => prevTime - 1); }, 1000);
+		return () => clearInterval(timerId);
+	}, [isOpen, timeLeft, onEndSession]);
 
-  if (!isOpen) return null;
-  const minutes = Math.floor(timeLeft / 60);
-  const seconds = timeLeft % 60;
+	if (!isOpen) return null;
+	const minutes = Math.floor(timeLeft / 60);
+	const seconds = timeLeft % 60;
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-8 rounded-2xl max-w-md w-full mx-4">
-        <h2 className="text-2xl font-bold text-center mb-6">Attendance QR Code</h2>
-        <div className="flex justify-center mb-6"> <QRCodeGenerator classInfo={classInfo} /> </div>
-        <div className="text-center mb-6">
-          <p className="text-gray-600 mb-2">Session ends in: {minutes}:{seconds.toString().padStart(2, '0')}</p>
-          <p className="text-sm text-gray-500">QR code refreshes every 5 seconds</p>
-        </div>
-        <div className="flex space-x-3">
-          <button onClick={onEndSession} className="flex-1 bg-green-600 text-white p-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"> End Session </button>
-          <button onClick={onClose} className="flex-1 bg-gray-600 text-white p-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"> Cancel </button>
-        </div>
-      </div>
-    </div>
-  );
+	return (
+		<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+			<div className="bg-white p-8 rounded-2xl max-w-md w-full mx-4">
+				<h2 className="text-2xl font-bold text-center mb-6">Attendance QR Code</h2>
+				<div className="flex justify-center mb-6"> <QRCodeGenerator classInfo={classInfo} /> </div>
+				<div className="text-center mb-6">
+					<p className="text-gray-600 mb-2">Session ends in: {minutes}:{seconds.toString().padStart(2, '0')}</p>
+					<p className="text-sm text-gray-500">QR code refreshes every 5 seconds</p>
+				</div>
+				<div className="flex space-x-3">
+					<button onClick={onEndSession} className="flex-1 bg-green-600 text-white p-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"> End Session </button>
+					<button onClick={onClose} className="flex-1 bg-gray-600 text-white p-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"> Cancel </button>
+				</div>
+			</div>
+		</div>
+	);
 };
 
 //check in modal for just scan any qr right now.
 const CheckInModal = ({ isOpen, onClose, className }) => {
-  const [step, setStep] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
-  const [scanError, setScanError] = useState(null);
+	const [step, setStep] = useState(1);
+	const [isLoading, setIsLoading] = useState(false);
+	const [scanError, setScanError] = useState(null);
 
-  const advanceStep = useCallback((nextStep) => {
-    setIsLoading(true);
-    setScanError(null);
-    setTimeout(() => { setIsLoading(false); setStep(nextStep); }, 500);
-  }, []);
+	const advanceStep = useCallback((nextStep) => {
+		setIsLoading(true);
+		setScanError(null);
+		setTimeout(() => { setIsLoading(false); setStep(nextStep); }, 500);
+	}, []);
 
-  // --- THIS IS THE CRITICAL CHANGE ---
-  // We are removing all validation logic. This function now accepts ANY successful scan
-  // and immediately moves to the next step.
-  const handleScanSuccess = useCallback((data) => {
-    console.log("Scan successful (validation skipped for demo). Data:", data);
-    advanceStep(3); // Immediately advance to the biometric step
-  }, [advanceStep]);
-  
-  const handleBiometricSuccess = useCallback(() => { advanceStep(4); }, [advanceStep]);
-  const handleClose = () => { setStep(1); setScanError(null); onClose(); };
-  
-  useEffect(() => { if(isOpen) { setStep(1); setScanError(null); } }, [isOpen])
+	// --- THIS IS THE CRITICAL CHANGE ---
+	// We are removing all validation logic. This function now accepts ANY successful scan
+	// and immediately moves to the next step.
+	const handleScanSuccess = useCallback((data) => {
+		console.log("Scan successful (validation skipped for demo). Data:", data);
+		advanceStep(3); // Immediately advance to the biometric step
+	}, [advanceStep]);
+	
+	const handleBiometricSuccess = useCallback(() => { advanceStep(4); }, [advanceStep]);
+	const handleClose = () => { setStep(1); setScanError(null); onClose(); };
+	
+	useEffect(() => { if(isOpen) { setStep(1); setScanError(null); } }, [isOpen])
 
-  if (!isOpen) return null;
+	if (!isOpen) return null;
 
-  const steps = [
-    { 
-      title: "Location Verification", 
-      icon: Navigation, 
-      content: (
-        <div>
-          <LocationVerification onSuccess={() => advanceStep(2)} onError={(msg) => console.error(msg)} />
-          <button
-              onClick={() => advanceStep(2)}
-              className="w-full mt-4 bg-yellow-500 text-white p-2 rounded-lg font-semibold hover:bg-yellow-600 transition-colors text-sm"
-          >
-              (Test) Skip Location
-          </button>
-        </div>
-      ), 
-      actionText: null 
-    },
-    { 
-      title: "QR Code Scanning", 
-      icon: QrCode, 
-      content: ( 
-        <div> 
-          <QRCodeScanner onScanSuccess={handleScanSuccess} onScanError={(err) => setScanError("Could not start camera.")} /> 
-          {scanError && <p className="text-red-500 text-center mt-3 text-sm font-semibold">{scanError}</p>} 
-          <button 
-              onClick={() => advanceStep(3)} 
-              className="w-full mt-4 bg-yellow-500 text-white p-2 rounded-lg font-semibold hover:bg-yellow-600 transition-colors text-sm"
-          >
-              (Test) Skip to Biometrics
-          </button> 
-        </div> 
-      ), 
-      actionText: null 
-    },
-    { title: "Biometric Verification", icon: Fingerprint, content: <BiometricAuth onSuccess={handleBiometricSuccess} />, actionText: null },
-    { title: "Success", icon: CheckCircle, content: <p className="text-center text-green-700">You have been successfully marked present!</p>, actionText: "Complete", action: handleClose }
-  ];
+	const steps = [
+		{ 
+			title: "Location Verification", 
+			icon: Navigation, 
+			content: (
+				<div>
+					<LocationVerification onSuccess={() => advanceStep(2)} onError={(msg) => console.error(msg)} />
+					<button
+						onClick={() => advanceStep(2)}
+						className="w-full mt-4 bg-yellow-500 text-white p-2 rounded-lg font-semibold hover:bg-yellow-600 transition-colors text-sm"
+					>
+						(Test) Skip Location
+					</button>
+				</div>
+			), 
+			actionText: null 
+		},
+		{ 
+			title: "QR Code Scanning", 
+			icon: QrCode, 
+			content: ( 
+				<div> 
+					<QRCodeScanner onScanSuccess={handleScanSuccess} onScanError={(err) => setScanError("Could not start camera.")} /> 
+					{scanError && <p className="text-red-500 text-center mt-3 text-sm font-semibold">{scanError}</p>} 
+					<button 
+						onClick={() => advanceStep(3)} 
+						className="w-full mt-4 bg-yellow-500 text-white p-2 rounded-lg font-semibold hover:bg-yellow-600 transition-colors text-sm"
+					>
+						(Test) Skip to Biometrics
+					</button> 
+				</div> 
+			), 
+			actionText: null 
+		},
+		{ title: "Biometric Verification", icon: Fingerprint, content: <BiometricAuth onSuccess={handleBiometricSuccess} />, actionText: null },
+		{ title: "Success", icon: CheckCircle, content: <p className="text-center text-green-700">You have been successfully marked present!</p>, actionText: "Complete", action: handleClose }
+	];
 
-  const currentStep = steps[step - 1];
+	const currentStep = steps[step - 1];
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full mx-4 transform transition-all">
-        <h2 className="text-2xl font-bold text-center mb-2">Check-in: {className}</h2>
-        <p className="text-center text-gray-600 mb-6">Step {step} of {steps.length}</p>
-        <div className="flex justify-center mb-6 min-h-[120px] items-center">
-            <div className={`w-24 h-24 rounded-full flex items-center justify-center transition-colors duration-300 ${ step === 4 ? 'bg-green-100' : 'bg-teal-100' /* using a placeholder */ }`}>
-                <currentStep.icon className={`w-12 h-12 transition-colors duration-300 ${ step === 4 ? 'text-green-600' : 'text-blue-700' /* placeholder */ }`} />
-            </div>
-        </div>
-        <h3 className="text-lg font-semibold text-center mb-2">{currentStep.title}</h3>
-        <div className="mb-6">{currentStep.content}</div>
-        {isLoading && ( <div className="flex justify-center my-4"> <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#647FBC]"></div> </div> )}
-        <div className="flex flex-col space-y-3">
-          {currentStep.actionText && !isLoading && ( <button onClick={currentStep.action} className={`w-full text-white p-3 rounded-lg font-semibold transition-colors ${ step === 4 ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700' /* placeholder */ }`}> {currentStep.actionText} </button> )}
-          {step < 4 && ( <button onClick={handleClose} disabled={isLoading} className="w-full bg-gray-200 text-gray-700 p-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors disabled:opacity-50"> Cancel </button> )}
-        </div>
-      </div>
-    </div>
-  );
+	return (
+		<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+			<div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full mx-4 transform transition-all">
+				<h2 className="text-2xl font-bold text-center mb-2">Check-in: {className}</h2>
+				<p className="text-center text-gray-600 mb-6">Step {step} of {steps.length}</p>
+				<div className="flex justify-center mb-6 min-h-[120px] items-center">
+					<div className={`w-24 h-24 rounded-full flex items-center justify-center transition-colors duration-300 ${ step === 4 ? 'bg-green-100' : 'bg-teal-100' /* using a placeholder */ }`}>
+						<currentStep.icon className={`w-12 h-12 transition-colors duration-300 ${ step === 4 ? 'text-green-600' : 'text-blue-700' /* placeholder */ }`} />
+					</div>
+				</div>
+				<h3 className="text-lg font-semibold text-center mb-2">{currentStep.title}</h3>
+				<div className="mb-6">{currentStep.content}</div>
+				{isLoading && ( <div className="flex justify-center my-4"> <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#647FBC]"></div> </div> )}
+				<div className="flex flex-col space-y-3">
+					{currentStep.actionText && !isLoading && ( <button onClick={currentStep.action} className={`w-full text-white p-3 rounded-lg font-semibold transition-colors ${ step === 4 ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700' /* placeholder */ }`}> {currentStep.actionText} </button> )}
+					{step < 4 && ( <button onClick={handleClose} disabled={isLoading} className="w-full bg-gray-200 text-gray-700 p-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors disabled:opacity-50"> Cancel </button> )}
+				</div>
+			</div>
+		</div>
+	);
 };
 
 
 // Date Navigation Component
 const DateNavigation = ({ currentDate, onDateChange }) => {
-  const formatDate = (date) => {
-    return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  };
-  const goToPreviousDay = () => { const newDate = new Date(currentDate); newDate.setDate(newDate.getDate() - 1); onDateChange(newDate); };
-  const goToNextDay = () => { const newDate = new Date(currentDate); newDate.setDate(newDate.getDate() + 1); onDateChange(newDate); };
-  return (
-    <div className="flex items-center justify-between mb-6">
-      <button onClick={goToPreviousDay} className="p-2 hover:bg-gray-200 rounded-lg transition-colors"> <ChevronLeft className="w-5 h-5" /> </button>
-      <h2 className="text-xl font-semibold">{formatDate(currentDate)}</h2>
-      <button onClick={goToNextDay} className="p-2 hover:bg-gray-200 rounded-lg transition-colors"> <ChevronRight className="w-5 h-5" /> </button>
-    </div>
-  );
+	const formatDate = (date) => {
+		return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+	};
+	const goToPreviousDay = () => { const newDate = new Date(currentDate); newDate.setDate(newDate.getDate() - 1); onDateChange(newDate); };
+	const goToNextDay = () => { const newDate = new Date(currentDate); newDate.setDate(newDate.getDate() + 1); onDateChange(newDate); };
+	return (
+		<div className="flex items-center justify-between mb-6">
+			<button onClick={goToPreviousDay} className="p-2 hover:bg-gray-200 rounded-lg transition-colors"> <ChevronLeft className="w-5 h-5" /> </button>
+			<h2 className="text-xl font-semibold">{formatDate(currentDate)}</h2>
+			<button onClick={goToNextDay} className="p-2 hover:bg-gray-200 rounded-lg transition-colors"> <ChevronRight className="w-5 h-5" /> </button>
+		</div>
+	);
 };
 
 // Admin Dashboard
 const AdminDashboard = () => {
-  const [activeView, setActiveView] = useState('dashboard');
-  const [selectedDepartment, setSelectedDepartment] = useState(null);
-  const [selectedFaculty, setSelectedFaculty] = useState(null);
-  const [selectedProgram, setSelectedProgram] = useState(null);
-  const [selectedSection, setSelectedSection] = useState(null);
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  const [currentDate, setCurrentDate] = useState(new Date());
+	const [activeView, setActiveView] = useState('dashboard');
+	const [selectedDepartment, setSelectedDepartment] = useState(null);
+	const [selectedFaculty, setSelectedFaculty] = useState(null);
+	const [selectedProgram, setSelectedProgram] = useState(null);
+	const [selectedSection, setSelectedSection] = useState(null);
+	const [selectedStudent, setSelectedStudent] = useState(null);
+	const [currentDate, setCurrentDate] = useState(new Date());
 
-  const sidebarItems = [
-    { key: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-    { key: 'departments', label: 'Departments', icon: Building2 },
-    { key: 'programs', label: 'Programs', icon: GraduationCap }
-  ];
+	const sidebarItems = [
+		{ key: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+		{ key: 'departments', label: 'Departments', icon: Building2 },
+		{ key: 'programs', label: 'Programs', icon: GraduationCap }
+	];
 
-  const renderDashboard = () => (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 mb-8">{mockUniversity.name}</h1>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-xl shadow-sm">
-            <User className={`w-8 h-8 ${colors.primaryBlueText} mb-3`} />
-            <h3 className="font-semibold text-gray-600 mb-2">Dean</h3>
-            <p className="text-lg font-bold">{mockUniversity.dean}</p>
-          </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm">
-            <Calendar className={`w-8 h-8 ${colors.primaryBlueText} mb-3`} />
-            <h3 className="font-semibold text-gray-600 mb-2">Established</h3>
-            <p className="text-lg font-bold">{mockUniversity.established}</p>
-          </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm">
-            <Location className={`w-8 h-8 ${colors.primaryBlueText} mb-3`} />
-            <h3 className="font-semibold text-gray-600 mb-2">Location</h3>
-            <p className="text-lg font-bold">{mockUniversity.location}</p>
-          </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm">
-            <Building2 className={`w-8 h-8 ${colors.primaryBlueText} mb-3`} />
-            <h3 className="font-semibold text-gray-600 mb-2">Address</h3>
-            <p className="text-sm">{mockUniversity.address}</p>
-          </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm">
-            <Award className={`w-8 h-8 ${colors.primaryBlueText} mb-3`} />
-            <h3 className="font-semibold text-gray-600 mb-2">Accreditation</h3>
-            <p className="text-sm">{mockUniversity.accreditation}</p>
-          </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm">
-            <Users className={`w-8 h-8 ${colors.primaryBlueText} mb-3`} />
-            <h3 className="font-semibold text-gray-600 mb-2">Total Students</h3>
-            <p className="text-lg font-bold">{mockUniversity.totalStudents.toLocaleString()}</p>
-          </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm">
-            <GraduationCap className={`w-8 h-8 ${colors.primaryBlueText} mb-3`} />
-            <h3 className="font-semibold text-gray-600 mb-2">Total Faculty</h3>
-            <p className="text-lg font-bold">{mockUniversity.totalFaculty.toLocaleString()}</p>
-          </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm">
-            <Phone className={`w-8 h-8 ${colors.primaryBlueText} mb-3`} />
-            <h3 className="font-semibold text-gray-600 mb-2">Phone</h3>
-            <p className="text-sm">{mockUniversity.phone}</p>
-          </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm">
-            <Mail className={`w-8 h-8 ${colors.primaryBlueText} mb-3`} />
-            <h3 className="font-semibold text-gray-600 mb-2">Email</h3>
-            <p className="text-sm">{mockUniversity.email}</p>
-          </div>
-        </div>
+	const renderDashboard = () => (
+		<div className="p-8">
+			<div className="mb-8">
+				<h1 className="text-4xl font-bold text-gray-800 mb-8">{mockUniversity.name}</h1>
+				
+				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+					<div className="bg-white p-6 rounded-xl shadow-sm">
+						<User className={`w-8 h-8 ${colors.primaryBlueText} mb-3`} />
+						<h3 className="font-semibold text-gray-600 mb-2">Dean</h3>
+						<p className="text-lg font-bold">{mockUniversity.dean}</p>
+					</div>
+					<div className="bg-white p-6 rounded-xl shadow-sm">
+						<Calendar className={`w-8 h-8 ${colors.primaryBlueText} mb-3`} />
+						<h3 className="font-semibold text-gray-600 mb-2">Established</h3>
+						<p className="text-lg font-bold">{mockUniversity.established}</p>
+					</div>
+					<div className="bg-white p-6 rounded-xl shadow-sm">
+						<Location className={`w-8 h-8 ${colors.primaryBlueText} mb-3`} />
+						<h3 className="font-semibold text-gray-600 mb-2">Location</h3>
+						<p className="text-lg font-bold">{mockUniversity.location}</p>
+					</div>
+					<div className="bg-white p-6 rounded-xl shadow-sm">
+						<Building2 className={`w-8 h-8 ${colors.primaryBlueText} mb-3`} />
+						<h3 className="font-semibold text-gray-600 mb-2">Address</h3>
+						<p className="text-sm">{mockUniversity.address}</p>
+					</div>
+					<div className="bg-white p-6 rounded-xl shadow-sm">
+						<Award className={`w-8 h-8 ${colors.primaryBlueText} mb-3`} />
+						<h3 className="font-semibold text-gray-600 mb-2">Accreditation</h3>
+						<p className="text-sm">{mockUniversity.accreditation}</p>
+					</div>
+					<div className="bg-white p-6 rounded-xl shadow-sm">
+						<Users className={`w-8 h-8 ${colors.primaryBlueText} mb-3`} />
+						<h3 className="font-semibold text-gray-600 mb-2">Total Students</h3>
+						<p className="text-lg font-bold">{mockUniversity.totalStudents.toLocaleString()}</p>
+					</div>
+					<div className="bg-white p-6 rounded-xl shadow-sm">
+						<GraduationCap className={`w-8 h-8 ${colors.primaryBlueText} mb-3`} />
+						<h3 className="font-semibold text-gray-600 mb-2">Total Faculty</h3>
+						<p className="text-lg font-bold">{mockUniversity.totalFaculty.toLocaleString()}</p>
+					</div>
+					<div className="bg-white p-6 rounded-xl shadow-sm">
+						<Phone className={`w-8 h-8 ${colors.primaryBlueText} mb-3`} />
+						<h3 className="font-semibold text-gray-600 mb-2">Phone</h3>
+						<p className="text-sm">{mockUniversity.phone}</p>
+					</div>
+					<div className="bg-white p-6 rounded-xl shadow-sm">
+						<Mail className={`w-8 h-8 ${colors.primaryBlueText} mb-3`} />
+						<h3 className="font-semibold text-gray-600 mb-2">Email</h3>
+						<p className="text-sm">{mockUniversity.email}</p>
+					</div>
+				</div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {mockDepartments.map(dept => (
-            <div key={dept.id} className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow">
-              <Building2 className={`w-8 h-8 ${colors.primaryBlueText} mb-3`} />
-              <h3 className="font-semibold mb-2">{dept.name}</h3>
-              <p className="text-sm text-gray-600 mb-1">{dept.faculty} Faculty</p>
-              <p className="text-sm text-gray-600">{dept.students} Students</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+					{mockDepartments.map(dept => (
+						<div key={dept.id} className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+							<Building2 className={`w-8 h-8 ${colors.primaryBlueText} mb-3`} />
+							<h3 className="font-semibold mb-2">{dept.name}</h3>
+							<p className="text-sm text-gray-600 mb-1">{dept.faculty} Faculty</p>
+							<p className="text-sm text-gray-600">{dept.students} Students</p>
+						</div>
+					))}
+				</div>
+			</div>
+		</div>
+	);
 
-  const getTodaysSchedule = () => {
-    const dayName = currentDate.toLocaleDateString('en-US', { weekday: 'long' });
-    return mockSchedule[dayName] || [];
-  };
+	const getTodaysSchedule = () => {
+		const dayName = currentDate.toLocaleDateString('en-US', { weekday: 'long' });
+		return mockSchedule[dayName] || [];
+	};
 
-  const renderFacultyProfile = () => {
-    const faculty = selectedFaculty;
-    const todaysSchedule = getTodaysSchedule();
-    
-    return (
-      <div className="p-8">
-        <button
-          onClick={() => setSelectedFaculty(null)}
-          className="mb-6 flex items-center space-x-2 text-gray-600 hover:text-gray-800"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          <span>Back to Faculty</span>
-        </button>
+	const renderFacultyProfile = () => {
+		const faculty = selectedFaculty;
+		const todaysSchedule = getTodaysSchedule();
+		
+		return (
+			<div className="p-8">
+				<button
+					onClick={() => setSelectedFaculty(null)}
+					className="mb-6 flex items-center space-x-2 text-gray-600 hover:text-gray-800"
+				>
+					<ChevronLeft className="w-4 h-4" />
+					<span>Back to Faculty</span>
+				</button>
 
-        <div className="bg-white p-8 rounded-xl shadow-sm mb-8">
-          <div className="flex items-center space-x-6 mb-8">
-            <img
-              src={faculty.photo}
-              alt={faculty.name}
-              className="w-24 h-24 rounded-full object-cover"
-            />
-            <div>
-              <h1 className="text-3xl font-bold">{faculty.name}</h1>
-              <p className="text-gray-600">{faculty.role}</p>
-              <p className="text-gray-600">Joined: {faculty.joined}</p>
-              <p className="text-gray-600">{faculty.qualification}</p>
-            </div>
-          </div>
+				<div className="bg-white p-8 rounded-xl shadow-sm mb-8">
+					<div className="flex items-center space-x-6 mb-8">
+						<img
+							src={faculty.photo}
+							alt={faculty.name}
+							className="w-24 h-24 rounded-full object-cover"
+						/>
+						<div>
+							<h1 className="text-3xl font-bold">{faculty.name}</h1>
+							<p className="text-gray-600">{faculty.role}</p>
+							<p className="text-gray-600">Joined: {faculty.joined}</p>
+							<p className="text-gray-600">{faculty.qualification}</p>
+						</div>
+					</div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-gray-50 p-6 rounded-xl">
-              <h3 className="font-semibold mb-4">Subjects Taught</h3>
-              <div className="space-y-2">
-                {faculty.subjects.map((subject, index) => (
-                  <div key={index} className="flex items-center space-x-2">
-                    <BookOpen className="w-4 h-4 text-gray-500" />
-                    <span>{subject}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+					<div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+						<div className="bg-gray-50 p-6 rounded-xl">
+							<h3 className="font-semibold mb-4">Subjects Taught</h3>
+							<div className="space-y-2">
+								{faculty.subjects.map((subject, index) => (
+									<div key={index} className="flex items-center space-x-2">
+										<BookOpen className="w-4 h-4 text-gray-500" />
+										<span>{subject}</span>
+									</div>
+								))}
+							</div>
+						</div>
 
-            <div className="bg-gray-50 p-6 rounded-xl">
-              <DateNavigation currentDate={currentDate} onDateChange={setCurrentDate} />
-              <h3 className="font-semibold mb-4">Today's Schedule</h3>
-              <div className="space-y-3">
-                {todaysSchedule.map(cls => (
-                  <div key={cls.id} className="flex justify-between items-center">
-                    <div>
-                      <p className="font-medium">{cls.subject}</p>
-                      <p className="text-sm text-gray-600">{cls.room}</p>
-                    </div>
-                    <p className="text-sm text-gray-600">{cls.time}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+						<div className="bg-gray-50 p-6 rounded-xl">
+							<DateNavigation currentDate={currentDate} onDateChange={setCurrentDate} />
+							<h3 className="font-semibold mb-4">Today's Schedule</h3>
+							<div className="space-y-3">
+								{todaysSchedule.map(cls => (
+									<div key={cls.id} className="flex justify-between items-center">
+										<div>
+											<p className="font-medium">{cls.subject}</p>
+											<p className="text-sm text-gray-600">{cls.room}</p>
+										</div>
+										<p className="text-sm text-gray-600">{cls.time}</p>
+									</div>
+								))}
+							</div>
+						</div>
+					</div>
+				</div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <BarChart
-            title="Subject-wise Class Attendance"
-            data={faculty.subjects.map(subject => ({
-              label: subject,
-              value: Math.floor(Math.random() * 20) + 80
-            }))}
-          />
-          <BarChart
-            title="Class-wise Attendance Comparison"
-            data={[
-              { label: "Section A", value: 92 },
-              { label: "Section B", value: 88 },
-              { label: "Section C", value: 95 }
-            ]}
-          />
-        </div>
-      </div>
-    );
-  };
+				<div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+					<BarChart
+						title="Subject-wise Class Attendance"
+						data={faculty.subjects.map(subject => ({
+							label: subject,
+							value: Math.floor(Math.random() * 20) + 80
+						}))}
+					/>
+					<BarChart
+						title="Class-wise Attendance Comparison"
+						data={[
+							{ label: "Section A", value: 92 },
+							{ label: "Section B", value: 88 },
+							{ label: "Section C", value: 95 }
+						]}
+					/>
+				</div>
+			</div>
+		);
+	};
 
-  const renderStudentProfile = () => {
-    const student = selectedStudent;
-    
-    return (
-      <div className="p-8">
-        <button
-          onClick={() => setSelectedStudent(null)}
-          className="mb-6 flex items-center space-x-2 text-gray-600 hover:text-gray-800"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          <span>Back to Students</span>
-        </button>
+	const renderStudentProfile = () => {
+		const student = selectedStudent;
+		
+		return (
+			<div className="p-8">
+				<button
+					onClick={() => setSelectedStudent(null)}
+					className="mb-6 flex items-center space-x-2 text-gray-600 hover:text-gray-800"
+				>
+					<ChevronLeft className="w-4 h-4" />
+					<span>Back to Students</span>
+				</button>
 
-        <div className="bg-white p-8 rounded-xl shadow-sm mb-8">
-          <div className="flex items-center space-x-6 mb-8">
-            <img
-              src={student.photo}
-              alt={student.name}
-              className="w-24 h-24 rounded-full object-cover"
-            />
-            <div>
-              <h1 className="text-3xl font-bold">{student.name}</h1>
-              <p className="text-gray-600">Roll No: {student.rollNo}</p>
-              <p className="text-gray-600">Overall Attendance: {student.attendance}%</p>
-            </div>
-          </div>
+				<div className="bg-white p-8 rounded-xl shadow-sm mb-8">
+					<div className="flex items-center space-x-6 mb-8">
+						<img
+							src={student.photo}
+							alt={student.name}
+							className="w-24 h-24 rounded-full object-cover"
+						/>
+						<div>
+							<h1 className="text-3xl font-bold">{student.name}</h1>
+							<p className="text-gray-600">Roll No: {student.rollNo}</p>
+							<p className="text-gray-600">Overall Attendance: {student.attendance}%</p>
+						</div>
+					</div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h4 className="font-semibold text-gray-600">Student Status</h4>
-              <p className="font-medium">{student.studentStatus}</p>
-            </div>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h4 className="font-semibold text-gray-600">Admission No</h4>
-              <p className="font-medium">{student.admissionNo}</p>
-            </div>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h4 className="font-semibold text-gray-600">Admission Year</h4>
-              <p className="font-medium">{student.admissionYear}</p>
-            </div>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h4 className="font-semibold text-gray-600">Degree</h4>
-              <p className="font-medium">{student.degree}</p>
-            </div>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h4 className="font-semibold text-gray-600">Department</h4>
-              <p className="font-medium">{student.department}</p>
-            </div>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h4 className="font-semibold text-gray-600">Semester</h4>
-              <p className="font-medium">{student.semester}</p>
-            </div>
-          </div>
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+						<div className="bg-gray-50 p-4 rounded-lg">
+							<h4 className="font-semibold text-gray-600">Student Status</h4>
+							<p className="font-medium">{student.studentStatus}</p>
+						</div>
+						<div className="bg-gray-50 p-4 rounded-lg">
+							<h4 className="font-semibold text-gray-600">Admission No</h4>
+							<p className="font-medium">{student.admissionNo}</p>
+						</div>
+						<div className="bg-gray-50 p-4 rounded-lg">
+							<h4 className="font-semibold text-gray-600">Admission Year</h4>
+							<p className="font-medium">{student.admissionYear}</p>
+						</div>
+						<div className="bg-gray-50 p-4 rounded-lg">
+							<h4 className="font-semibold text-gray-600">Degree</h4>
+							<p className="font-medium">{student.degree}</p>
+						</div>
+						<div className="bg-gray-50 p-4 rounded-lg">
+							<h4 className="font-semibold text-gray-600">Department</h4>
+							<p className="font-medium">{student.department}</p>
+						</div>
+						<div className="bg-gray-50 p-4 rounded-lg">
+							<h4 className="font-semibold text-gray-600">Semester</h4>
+							<p className="font-medium">{student.semester}</p>
+						</div>
+					</div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <BarChart
-              title="Subject-wise Attendance (Current Month)"
-              data={Object.entries(student.subjectAttendance).map(([subject, attendance]) => ({
-                label: subject,
-                value: attendance
-              }))}
-            />
-            <div className="bg-gray-50 p-6 rounded-xl">
-              <h3 className="font-semibold mb-4">Academic Details</h3>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-gray-600">Course Name</p>
-                  <p className="font-medium">{student.courseName}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">College</p>
-                  <p className="font-medium">{student.college}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Curriculum Plan</p>
-                  <p className="font-medium">{student.curriculumPlan}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
+					<div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+						<BarChart
+							title="Subject-wise Attendance (Current Month)"
+							data={Object.entries(student.subjectAttendance).map(([subject, attendance]) => ({
+								label: subject,
+								value: attendance
+							}))}
+						/>
+						<div className="bg-gray-50 p-6 rounded-xl">
+							<h3 className="font-semibold mb-4">Academic Details</h3>
+							<div className="space-y-3">
+								<div>
+									<p className="text-sm text-gray-600">Course Name</p>
+									<p className="font-medium">{student.courseName}</p>
+								</div>
+								<div>
+									<p className="text-sm text-gray-600">College</p>
+									<p className="font-medium">{student.college}</p>
+								</div>
+								<div>
+									<p className="text-sm text-gray-600">Curriculum Plan</p>
+									<p className="font-medium">{student.curriculumPlan}</p>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		);
+	};
 
-  const renderDepartments = () => {
-    if (selectedStudent) {
-      return renderStudentProfile();
-    }
+	const renderDepartments = () => {
+		if (selectedStudent) {
+			return renderStudentProfile();
+		}
 
-    if (selectedFaculty) {
-      return renderFacultyProfile();
-    }
+		if (selectedFaculty) {
+			return renderFacultyProfile();
+		}
 
-    if (selectedDepartment) {
-      const department = mockDepartments.find(d => d.id === selectedDepartment);
-      const faculty = mockFaculty[selectedDepartment] || [];
+		if (selectedDepartment) {
+			const department = mockDepartments.find(d => d.id === selectedDepartment);
+			const faculty = mockFaculty[selectedDepartment] || [];
 
-      return (
-        <div className="p-8">
-          <button
-            onClick={() => setSelectedDepartment(null)}
-            className="mb-6 flex items-center space-x-2 text-gray-600 hover:text-gray-800"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            <span>Back to Departments</span>
-          </button>
+			return (
+				<div className="p-8">
+					<button
+						onClick={() => setSelectedDepartment(null)}
+						className="mb-6 flex items-center space-x-2 text-gray-600 hover:text-gray-800"
+					>
+						<ChevronLeft className="w-4 h-4" />
+						<span>Back to Departments</span>
+					</button>
 
-          <h1 className="text-3xl font-bold mb-8">{department.name} Faculty</h1>
+					<h1 className="text-3xl font-bold mb-8">{department.name} Faculty</h1>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {faculty.map(member => (
-              <div
-                key={member.id}
-                className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => setSelectedFaculty(member)}
-              >
-                <img
-                  src={member.photo}
-                  alt={member.name}
-                  className="w-20 h-20 rounded-full object-cover mx-auto mb-4"
-                />
-                <h3 className="font-semibold text-center mb-2">{member.name}</h3>
-                <p className="text-sm text-gray-600 text-center mb-1">{member.role}</p>
-                <p className="text-sm text-gray-600 text-center">Joined: {member.joined}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-    }
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+						{faculty.map(member => (
+							<div
+								key={member.id}
+								className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+								onClick={() => setSelectedFaculty(member)}
+							>
+								<img
+									src={member.photo}
+									alt={member.name}
+									className="w-20 h-20 rounded-full object-cover mx-auto mb-4"
+								/>
+								<h3 className="font-semibold text-center mb-2">{member.name}</h3>
+								<p className="text-sm text-gray-600 text-center mb-1">{member.role}</p>
+								<p className="text-sm text-gray-600 text-center">Joined: {member.joined}</p>
+							</div>
+						))}
+					</div>
+				</div>
+			);
+		}
 
-    return (
-      <div className="p-8">
-        <h1 className="text-3xl font-bold mb-8">Departments</h1>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {mockDepartments.map(dept => (
-            <div
-              key={dept.id}
-              className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => setSelectedDepartment(dept.id)}
-            >
-              <Building2 className={`w-10 h-10 ${colors.primaryBlueText} mb-4`} />
-              <h3 className="text-xl font-semibold mb-2">{dept.name}</h3>
-              <p className="text-gray-600 mb-1">{dept.faculty} Faculty Members</p>
-              <p className="text-gray-600">{dept.students} Students</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
+		return (
+			<div className="p-8">
+				<h1 className="text-3xl font-bold mb-8">Departments</h1>
+				
+				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+					{mockDepartments.map(dept => (
+						<div
+							key={dept.id}
+							className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+							onClick={() => setSelectedDepartment(dept.id)}
+						>
+							<Building2 className={`w-10 h-10 ${colors.primaryBlueText} mb-4`} />
+							<h3 className="text-xl font-semibold mb-2">{dept.name}</h3>
+							<p className="text-gray-600 mb-1">{dept.faculty} Faculty Members</p>
+							<p className="text-gray-600">{dept.students} Students</p>
+						</div>
+					))}
+				</div>
+			</div>
+		);
+	};
 
-  const renderPrograms = () => {
-    if (selectedStudent) {
-      return renderStudentProfile();
-    }
+	const renderPrograms = () => {
+		if (selectedStudent) {
+			return renderStudentProfile();
+		}
 
-    if (selectedSection) {
-      const program = mockPrograms.find(p => p.id === selectedProgram);
-      const students = mockStudents[`${selectedProgram}-${selectedSection}`] || [];
+		if (selectedSection) {
+			const program = mockPrograms.find(p => p.id === selectedProgram);
+			const students = mockStudents[`${selectedProgram}-${selectedSection}`] || [];
 
-      return (
-        <div className="p-8">
-          <button
-            onClick={() => setSelectedSection(null)}
-            className="mb-6 flex items-center space-x-2 text-gray-600 hover:text-gray-800"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            <span>Back to Sections</span>
-          </button>
+			return (
+				<div className="p-8">
+					<button
+						onClick={() => setSelectedSection(null)}
+						className="mb-6 flex items-center space-x-2 text-gray-600 hover:text-gray-800"
+					>
+						<ChevronLeft className="w-4 h-4" />
+						<span>Back to Sections</span>
+					</button>
 
-          <h1 className="text-3xl font-bold mb-8">{program.name} - Section {selectedSection}</h1>
+					<h1 className="text-3xl font-bold mb-8">{program.name} - Section {selectedSection}</h1>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {students.map(student => (
-              <div
-                key={student.id}
-                className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => setSelectedStudent(student)}
-              >
-                <img
-                  src={student.photo}
-                  alt={student.name}
-                  className="w-20 h-20 rounded-full object-cover mx-auto mb-4"
-                />
-                <h3 className="font-semibold text-center mb-2">{student.name}</h3>
-                <p className="text-sm text-gray-600 text-center mb-1">Roll: {student.rollNo}</p>
-                <p className="text-sm text-center">
-                  <span className={`font-semibold ${student.attendance >= 85 ? 'text-green-600' : student.attendance >= 75 ? 'text-yellow-600' : 'text-red-600'}`}>
-                    {student.attendance}% Attendance
-                  </span>
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-    }
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+						{students.map(student => (
+							<div
+								key={student.id}
+								className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+								onClick={() => setSelectedStudent(student)}
+							>
+								<img
+									src={student.photo}
+									alt={student.name}
+									className="w-20 h-20 rounded-full object-cover mx-auto mb-4"
+								/>
+								<h3 className="font-semibold text-center mb-2">{student.name}</h3>
+								<p className="text-sm text-gray-600 text-center mb-1">Roll: {student.rollNo}</p>
+								<p className="text-sm text-center">
+									<span className={`font-semibold ${student.attendance >= 85 ? 'text-green-600' : student.attendance >= 75 ? 'text-yellow-600' : 'text-red-600'}`}>
+										{student.attendance}% Attendance
+									</span>
+								</p>
+							</div>
+						))}
+					</div>
+				</div>
+			);
+		}
 
-    if (selectedProgram) {
-      const program = mockPrograms.find(p => p.id === selectedProgram);
+		if (selectedProgram) {
+			const program = mockPrograms.find(p => p.id === selectedProgram);
 
-      return (
-        <div className="p-8">
-          <button
-            onClick={() => setSelectedProgram(null)}
-            className="mb-6 flex items-center space-x-2 text-gray-600 hover:text-gray-800"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            <span>Back to Programs</span>
-          </button>
+			return (
+				<div className="p-8">
+					<button
+						onClick={() => setSelectedProgram(null)}
+						className="mb-6 flex items-center space-x-2 text-gray-600 hover:text-gray-800"
+					>
+						<ChevronLeft className="w-4 h-4" />
+						<span>Back to Programs</span>
+					</button>
 
-          <h1 className="text-3xl font-bold mb-8">{program.name}</h1>
+					<h1 className="text-3xl font-bold mb-8">{program.name}</h1>
 
-          <div className="mb-8">
-            <BarChart
-              title="Section-wise Attendance Comparison"
-              data={program.sections.map((section, index) => ({
-                label: `Section ${section}`,
-                value: 85 + (index * 5) - 2
-              }))}
-            />
-          </div>
+					<div className="mb-8">
+						<BarChart
+							title="Section-wise Attendance Comparison"
+							data={program.sections.map((section, index) => ({
+								label: `Section ${section}`,
+								value: 85 + (index * 5) - 2
+							}))}
+						/>
+					</div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {program.sections.map(section => (
-              <div
-                key={section}
-                className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => setSelectedSection(section)}
-              >
-                <h3 className="text-xl font-semibold mb-4">Section {section}</h3>
-                <div className="space-y-2">
-                  <p className="text-gray-600">Students: 60</p>
-                  <p className="text-gray-600">Average Attendance: {85 + (program.sections.indexOf(section) * 5) - 2}%</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-    }
+					<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+						{program.sections.map(section => (
+							<div
+								key={section}
+								className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+								onClick={() => setSelectedSection(section)}
+							>
+								<h3 className="text-xl font-semibold mb-4">Section {section}</h3>
+								<div className="space-y-2">
+									<p className="text-gray-600">Students: 60</p>
+									<p className="text-gray-600">Average Attendance: {85 + (program.sections.indexOf(section) * 5) - 2}%</p>
+								</div>
+							</div>
+						))}
+					</div>
+				</div>
+			);
+		}
 
-    return (
-      <div className="p-8">
-        <h1 className="text-3xl font-bold mb-8">Academic Programs</h1>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {mockPrograms.map(program => (
-            <div
-              key={program.id}
-              className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => setSelectedProgram(program.id)}
-            >
-              <GraduationCap className={`w-10 h-10 ${colors.primaryBlueText} mb-4`} />
-              <h3 className="text-xl font-semibold mb-2">{program.name}</h3>
-              <p className="text-gray-600 mb-1">{program.sections.length} Sections</p>
-              <p className="text-gray-600">{program.totalStudents} Students</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
+		return (
+			<div className="p-8">
+				<h1 className="text-3xl font-bold mb-8">Academic Programs</h1>
+				
+				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+					{mockPrograms.map(program => (
+						<div
+							key={program.id}
+							className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+							onClick={() => setSelectedProgram(program.id)}
+						>
+							<GraduationCap className={`w-10 h-10 ${colors.primaryBlueText} mb-4`} />
+							<h3 className="text-xl font-semibold mb-2">{program.name}</h3>
+							<p className="text-gray-600 mb-1">{program.sections.length} Sections</p>
+							<p className="text-gray-600">{program.totalStudents} Students</p>
+						</div>
+					))}
+				</div>
+			</div>
+		);
+	};
 
-  return (
-    <div className="flex">
-      <Sidebar 
-        activeView={activeView}
-        setActiveView={setActiveView}
-        items={sidebarItems}
-        userRole="University Admin"
-      />
-      <div className="flex-1 bg-gray-50">
-        {activeView === 'dashboard' && renderDashboard()}
-        {activeView === 'departments' && renderDepartments()}
-        {activeView === 'programs' && renderPrograms()}
-      </div>
-    </div>
-  );
+	return (
+		<div className="flex">
+			<Sidebar 
+				activeView={activeView}
+				setActiveView={setActiveView}
+				items={sidebarItems}
+				userRole="University Admin"
+			/>
+			<div className="flex-1 bg-gray-50">
+				{activeView === 'dashboard' && renderDashboard()}
+				{activeView === 'departments' && renderDepartments()}
+				{activeView === 'programs' && renderPrograms()}
+			</div>
+		</div>
+	);
 };
+
+// --- NEW COMPONENT: Dropdown Menu for Online Platforms ---
+const OnlinePlatformDropdown = ({ classInfo, onSelect, onToggle, isOpen, buttonRef }) => {
+    const dropdownRef = useRef(null);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            // Check if the click is outside the dropdown AND the button that toggled it
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target) && buttonRef.current && !buttonRef.current.contains(event.target)) {
+                onToggle(null);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [onToggle, buttonRef]);
+
+    if (!isOpen) return null;
+
+    // Define your platforms and link generation logic here
+    const platforms = [
+        { name: 'Google Meet', linkGenerator: (id) => `https://meet.google.com/landing?authuser=0=${id}` },
+        { name: 'Zoom', linkGenerator: (id) => `https://zoom.us/j/class-${id}` }, // Placeholder Zoom URL logic
+        { name: 'Other', linkGenerator: (id) => ` ` } // Placeholder Teams URL logic
+    ];
+
+    return (
+        <div 
+            ref={dropdownRef}
+            className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-20 overflow-hidden"
+        >
+            {platforms.map((platform) => (
+                <button
+                    key={platform.name}
+                    onClick={() => {
+                        onSelect(classInfo, platform.name, platform.linkGenerator);
+                        onToggle(null); // Close dropdown after selection
+                    }}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                    {platform.name}
+                </button>
+            ))}
+        </div>
+    );
+};
+// -------------------------------------------------------------
+
 
 // Professor Dashboard
 const ProfessorDashboard = () => {
-  // --- ADD THIS CODE AT THE TOP OF YOUR ProfessorDashboard COMPONENT ---
+    const colors = { primaryBlue: 'bg-[#647FBC]', secondaryBlue: 'bg-[#91ADC8]', lightTeal: 'bg-[#AED6CF]', lightYellow: 'bg-[#FAFDD6]', primaryBlueBorder: 'border-[#647FBC]', primaryBlueText: 'text-[#647FBC]', primaryBlueHover: 'hover:bg-[#647FBC]' };
+	
+	// --- NEW STATE: Tracks the ID of the class whose dropdown is currently open ---
+    const [openDropdownId, setOpenDropdownId] = useState(null);
+    // -----------------------------------------------------------------------------
+	
+	const [onlineSessionStarted, setOnlineSessionStarted] = useState(null);
+	const [showUploadBoxFor, setShowUploadBoxFor] = useState(null);
+	const [activeView, setActiveView] = useState('schedule'); // Changed default to 'schedule' to show the main change immediately
+	const [showQRModal, setShowQRModal] = useState(false);
+	const [selectedClass, setSelectedClass] = useState(null);
+	const [attendanceSession, setAttendanceSession] = useState(null);
+	const [duplicateFlags, setDuplicateFlags] = useState([]);
+	const [currentDate, setCurrentDate] = useState(new Date('September 26, 2025')); // Changed default date to match screenshot
 
-// This state tracks which online class was started, so we can show the "Upload" button.
-  const [onlineSessionStarted, setOnlineSessionStarted] = useState(null);
-  const [showUploadBoxFor, setShowUploadBoxFor] = useState(null);
-  const [activeView, setActiveView] = useState('profile');
-  const [showQRModal, setShowQRModal] = useState(false);
-  const [selectedClass, setSelectedClass] = useState(null);
-  const [attendanceSession, setAttendanceSession] = useState(null);
-  const [duplicateFlags, setDuplicateFlags] = useState([]);
-  const [currentDate, setCurrentDate] = useState(new Date());
-  
-  const sidebarItems = [
-    { key: 'profile', label: 'Profile', icon: User },
-    { key: 'schedule', label: 'Schedule', icon: Calendar },
-    { key: 'attendance', label: 'Attendance', icon: Activity }
-  ];
+	const sidebarItems = [
+		{ key: 'profile', label: 'Profile', icon: User },
+		{ key: 'schedule', label: 'Schedule', icon: Calendar },
+		{ key: 'attendance', label: 'Attendance', icon: Activity }
+	];
 
-  const professorData = {
-    name: "Dr. John Smith",
-    photo: "https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg?auto=compress&cs=tinysrgb&w=150",
-    department: "Computer Science",
-    role: "Associate Professor",
-    qualification: "Ph.D. in Computer Science",
-    yearJoined: 2018,
-    subjects: ["Data Structures", "Algorithms", "Database Systems", "Web Development"]
-  };
+	const professorData = {
+		name: "Dr. John Smith",
+		photo: "https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg?auto=compress&cs=tinysrgb&w=150",
+		department: "Computer Science",
+		role: "Associate Professor",
+		qualification: "Ph.D. in Computer Science",
+		yearJoined: 2018,
+		subjects: ["Data Structures", "Algorithms", "Database Systems", "Web Development"]
+	};
 
-  const professorClasses = [
-    {
-      id: 1,
-      className: "Section A",
-      semester: "6th Semester",
-      program: "B.Tech Computer Science",
-      subject: "Data Structures",
-      students: mockStudents["1-A"] || []
-    },
-    {
-      id: 2,
-      className: "Section B", 
-      semester: "6th Semester",
-      program: "B.Tech Computer Science",
-      subject: "Web Development",
-      students: mockStudents["1-B"] || []
-    },
-    {
-      id: 3,
-      className: "Section C",
-      semester: "6th Semester", 
-      program: "B.Tech Computer Science",
-      subject: "Machine Learning",
-      students: mockStudents["1-C"] || []
-    },
-     {
-      id: 4,
-      className: "Section A",
-      semester: "6th Semester",
-      program: "B.Tech Computer Science",
-      subject: "Algorithms",
-      students: mockStudents["1-A"] || []
-    },
-    {
-      id: 5,
-      className: "Section A",
-      semester: "6th Semester",
-      program: "B.Tech Computer Science",
-      subject: "Database Systems",
-      students: mockStudents["1-A"] || []
-    }
-  ];
+	const professorClasses = [
+		{
+			id: 1,
+			className: "Section A",
+			semester: "6th Semester",
+			program: "B.Tech Computer Science",
+			subject: "Data Structures",
+			students: mockStudents["1-A"] || []
+		},
+		{
+			id: 2,
+			className: "Section B",	
+			semester: "6th Semester",
+			program: "B.Tech Computer Science",
+			subject: "Web Development",
+			students: mockStudents["1-B"] || []
+		},
+		{
+			id: 3,
+			className: "Section C",
+			semester: "6th Semester",	
+			program: "B.Tech Computer Science",
+			subject: "Machine Learning",
+			students: mockStudents["1-C"] || []
+		},
+		{
+			id: 4,
+			className: "Section A",
+			semester: "6th Semester",
+			program: "B.Tech Computer Science",
+			subject: "Algorithms",
+			students: mockStudents["1-A"] || []
+		},
+		{
+			id: 5,
+			className: "Section A",
+			semester: "6th Semester",
+			program: "B.Tech Computer Science",
+			subject: "Database Systems",
+			students: mockStudents["1-A"] || []
+		}
+	];
 
-  const handleStartQR = (classInfo) => {
-    setSelectedClass(classInfo);
-    setShowQRModal(true);
-  };
-  //Online Classes
-  const handleStartOnlineClass = (classInfo) => {
+	const handleStartQR = (classInfo) => {
+		setSelectedClass(classInfo);
+		setShowQRModal(true);
+	};
+
+    // --- MODIFIED: Now accepts platform and linkGenerator ---
+	const handleStartOnlineClass = (classInfo, platformName, linkGenerator) => {
+        const meetLink = linkGenerator(classInfo.id);
+
+        // Open the meeting link
+        window.open(meetLink, '_blank');
+
+        // Set state to show the Upload CSV button for this specific class
+        setOnlineSessionStarted(classInfo);
+        alert(`Starting ${platformName} session for ${classInfo.subject}. Meeting link opened in a new tab.`);
+	};
+    // -------------------------------------------------------------
     
-  // You can generate a dynamic Google Meet link based on the class,
-  // or use a static one for now.
-  const googleMeetLink = `https://meet.google.com/landing?authuser=0=${classInfo.id}`;
+    // Handler to toggle the dropdown
+    const handleToggleDropdown = (classId) => {
+        setOpenDropdownId(openDropdownId === classId ? null : classId);
+    };
 
-  // This will open a new browser tab with the Google Meet link.
-  window.open(googleMeetLink, '_blank');
+	const handleEndSession = () => {
+		setShowQRModal(false);
 
-  // You can also add state here to show a confirmation message, if needed.
-  // For example, set a state variable like setOnlineSessionStarted(true);
-  setOnlineSessionStarted(classInfo);
-};
-  const handleEndSession = () => {
-    setShowQRModal(false);
+		// Find the full class information from `professorClasses` using the subject
+		const fullClassInfo = professorClasses.find(
+			(p) => p.subject === selectedClass.subject
+		);
 
-    // Find the full class information from `professorClasses` using the subject
-    // from the `selectedClass` state. The schedule item in `selectedClass` 
-    // does not contain the list of students, so we look it up here.
-    const fullClassInfo = professorClasses.find(
-      (p) => p.subject === selectedClass.subject
-    );
+		// If the class is found and has a students array, update the session state.
+		if (fullClassInfo && fullClassInfo.students) {
+			setDuplicateFlags(['Sarah Wilson', 'David Brown']);
+			setAttendanceSession({
+				class: fullClassInfo,
+				students: fullClassInfo.students,
+			});
+		} else {
+			// Log an error if the class details couldn't be found, to help with debugging.
+			console.error("Error: Could not find student list for the selected class.", selectedClass);
+			setAttendanceSession(null); // Clear session to prevent further errors
+		}
+	};
 
-    // If the class is found and has a students array, update the session state.
-    if (fullClassInfo && fullClassInfo.students) {
-      setDuplicateFlags(['Sarah Wilson', 'David Brown']);
-      setAttendanceSession({
-        class: fullClassInfo,
-        students: fullClassInfo.students,
-      });
-    } else {
-      // Log an error if the class details couldn't be found, to help with debugging.
-      console.error("Error: Could not find student list for the selected class.", selectedClass);
-      setAttendanceSession(null); // Clear session to prevent further errors
-    }
-  };
+	const getTodaysSchedule = () => {
+		const dayName = currentDate.toLocaleDateString('en-US', { weekday: 'long' });
+		return mockSchedule[dayName] || [];
+	};
 
-  const getTodaysSchedule = () => {
-    const dayName = currentDate.toLocaleDateString('en-US', { weekday: 'long' });
-    return mockSchedule[dayName] || [];
-  };
+	const renderProfile = () => (
+		<div className="p-8">
+			<div className="bg-white p-8 rounded-xl shadow-sm mb-8">
+				<div className="flex items-center space-x-6 mb-8">
+					<img
+						src={professorData.photo}
+						alt={professorData.name}
+						className="w-24 h-24 rounded-full object-cover"
+					/>
+					<div>
+						<h1 className="text-3xl font-bold">{professorData.name}</h1>
+						<p className="text-gray-600">{professorData.role}</p>
+						<p className="text-gray-600">{professorData.department} Department</p>
+						<p className="text-gray-600">Joined: {professorData.yearJoined}</p>
+					</div>
+				</div>
 
-  const renderProfile = () => (
-    <div className="p-8">
-      <div className="bg-white p-8 rounded-xl shadow-sm mb-8">
-        <div className="flex items-center space-x-6 mb-8">
-          <img
-            src={professorData.photo}
-            alt={professorData.name}
-            className="w-24 h-24 rounded-full object-cover"
-          />
-          <div>
-            <h1 className="text-3xl font-bold">{professorData.name}</h1>
-            <p className="text-gray-600">{professorData.role}</p>
-            <p className="text-gray-600">{professorData.department} Department</p>
-            <p className="text-gray-600">Joined: {professorData.yearJoined}</p>
-          </div>
-        </div>
+				<div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+					<div className="bg-gray-50 p-6 rounded-xl">
+						<h3 className="font-semibold mb-4">Qualification</h3>
+						<p className="text-gray-700">{professorData.qualification}</p>
+					</div>
+					
+					<div className="bg-gray-50 p-6 rounded-xl">
+						<h3 className="font-semibold mb-4">Subjects Taught</h3>
+						<div className="space-y-2">
+							{professorData.subjects.map((subject, index) => (
+								<div key={index} className="flex items-center space-x-2">
+									<BookOpen className="w-4 h-4 text-gray-500" />
+									<span>{subject}</span>
+								</div>
+							))}
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	);
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="bg-gray-50 p-6 rounded-xl">
-            <h3 className="font-semibold mb-4">Qualification</h3>
-            <p className="text-gray-700">{professorData.qualification}</p>
-          </div>
-          
-          <div className="bg-gray-50 p-6 rounded-xl">
-            <h3 className="font-semibold mb-4">Subjects Taught</h3>
-            <div className="space-y-2">
-              {professorData.subjects.map((subject, index) => (
-                <div key={index} className="flex items-center space-x-2">
-                  <BookOpen className="w-4 h-4 text-gray-500" />
-                  <span>{subject}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+	const renderSchedule = () => {
+		const todaysSchedule = getTodaysSchedule() || [];
+		const handleFileSelect = (event) => {
+			const file = event.target.files[0];
+			if (file) {
+				console.log("File selected:", file.name);
+				console.log("In a real app, you would now parse this file and submit the attendance.");
 
-  const renderSchedule = () => {
-    const todaysSchedule = getTodaysSchedule() || [];
-    const handleFileSelect = (event) => {
-      const file = event.target.files[0];
-      if (file) {
-          console.log("File selected:", file.name);
-          console.log("In a real app, you would now parse this file and submit the attendance.");
+				alert("The File has been successfully Loaded and the Attendance has been marked.")
 
-          alert("The File has been successfully Loaded and the Attendance has been marked.")
+				// Reset the UI after selection
+				setShowUploadBoxFor(null);
+				setOnlineSessionStarted(null);
+				
+			}
+		};
 
-          // Reset the UI after selection
-          setShowUploadBoxFor(null);
-          setOnlineSessionStarted(null);
-          
-      }
-  };
-    return (
-      <div className="p-8">
-        <h1 className="text-3xl font-bold mb-8">My Schedule</h1>
+        // Ref to attach to the main button for the dropdown positioning/logic
+        const buttonRefs = useRef({});
+		
+		return (
+			<div className="p-8">
+				<h1 className="text-3xl font-bold mb-8">My Schedule</h1>
 
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <DateNavigation currentDate={currentDate} onDateChange={setCurrentDate} />
-          
-          <div className="space-y-4">
-            {todaysSchedule.length > 0 ? (
-              todaysSchedule.map(cls => (
-                <div key={cls.id} className="border border-gray-200 rounded-lg">
-                  <div className="flex items-center justify-between p-4">
-                    <div>
-                      <h3 className="font-semibold">{cls.subject}</h3>
-                      <p className="text-sm text-gray-600">{cls.time} • {cls.room}</p>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <button
-                        onClick={() => handleStartQR(cls)}
-                        className={`${colors.primaryBlue} text-white px-4 py-2 rounded-lg font-medium hover:bg-[#5a73a8] transition-colors`}
-                      >
-                        Offline Attendance
-                      </button>
-                      <button 
-                        onClick={() => handleStartOnlineClass(cls)} 
-                        className={`${colors.primaryBlue} text-white px-4 py-2 rounded-lg font-medium hover:bg-[#7d9abd] transition-colors`}
-                      >
-                        Online Attendance
-                      </button>
+				<div className="bg-white rounded-xl shadow-sm p-6">
+					<DateNavigation currentDate={currentDate} onDateChange={setCurrentDate} />
+					
+					<div className="space-y-4">
+						{todaysSchedule.length > 0 ? (
+							todaysSchedule.map(cls => (
+								<div key={cls.id} className="border border-gray-200 rounded-lg">
+									<div className="flex items-center justify-between p-4">
+										<div>
+											<h3 className="font-semibold">{cls.subject}</h3>
+											<p className="text-sm text-gray-600">{cls.time} • {cls.room}</p>
+										</div>
+										<div className="flex items-center space-x-3">
+											<button
+												onClick={() => handleStartQR(cls)}
+												className={`${colors.primaryBlue} text-white px-4 py-2 rounded-lg font-medium hover:bg-[#5a73a8] transition-colors`}
+											>
+												Offline Attendance
+											</button>
+                                            
+                                            {/* --- START OF DROPDOWN IMPLEMENTATION (YOUR REQUEST) --- */}
+                                            <div className="relative">
+                                                <button
+                                                    // Use a ref for the dropdown to work correctly
+                                                    ref={el => buttonRefs.current[cls.id] = el}
+                                                    onClick={() => handleToggleDropdown(cls.id)}
+                                                    className={`${colors.primaryBlue} text-white px-4 py-2 rounded-lg font-medium hover:bg-[#7d9abd] transition-colors flex items-center space-x-2`}
+                                                >
+                                                    <span>Online Attendance</span>
+                                                    <ChevronDown className="w-4 h-4" />
+                                                </button>
+                                                
+                                                <OnlinePlatformDropdown
+                                                    classInfo={cls}
+                                                    onSelect={handleStartOnlineClass}
+                                                    onToggle={handleToggleDropdown}
+                                                    isOpen={openDropdownId === cls.id}
+                                                    // Pass the button's ref to the dropdown so it can handle outside clicks correctly
+                                                    buttonRef={{ current: buttonRefs.current[cls.id] }} 
+                                                />
+                                            </div>
+                                            {/* --- END OF DROPDOWN IMPLEMENTATION --- */}
 
-                      {/* --- NEW: Conditionally render the "Upload CSV" button --- */}
-                      {onlineSessionStarted && onlineSessionStarted.id === cls.id && (
-                        <button
-                          onClick={() => setShowUploadBoxFor(cls)}
-                          className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium animate-pulse"
-                        >
-                          Upload CSV
-                        </button>
-                      )}
-                    </div>
-                  </div>
+											{/* --- Conditionally render the "Upload CSV" button --- */}
+											{onlineSessionStarted && onlineSessionStarted.id === cls.id && (
+												<button
+													onClick={() => setShowUploadBoxFor(cls)}
+													className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium animate-pulse"
+												>
+													Upload CSV
+												</button>
+											)}
+										</div>
+									</div>
 
-                  {/* --- NEW: Conditionally render the small upload box --- */}
-                  {showUploadBoxFor && showUploadBoxFor.id === cls.id && (
-                    <div className="bg-gray-50 border-t p-4">
-                      <label 
-                        htmlFor={`file-upload-${cls.id}`} 
-                        className="w-full text-center cursor-pointer bg-white border border-gray-300 rounded-lg p-3 block hover:bg-gray-100"
-                      >
-                        Click to select participant list (.csv)
-                      </label>
-                      <input 
-                        id={`file-upload-${cls.id}`} 
-                        type="file" 
-                        accept=".csv"
-                        className="hidden"
-                        onChange={handleFileSelect}
-                      />
-                    </div>
-                  )}
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <p>No classes scheduled for this day.</p>
-              </div>
-            )}
-          </div>
-        </div>
-        
-        {attendanceSession && (
-          <div className="mt-8 bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-xl font-semibold mb-4">Attendance Session: {attendanceSession.class.subject}</h2>
-            
-            {duplicateFlags.length > 0 && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                <div className="flex items-center space-x-2 mb-2">
-                  <AlertTriangle className="w-5 h-5 text-red-600" />
-                  <h3 className="font-semibold text-red-800">Duplicate Browser Fingerprints Detected</h3>
-                </div>
-                <p className="text-red-700 mb-2">The following students have suspicious activity:</p>
-                <ul className="list-disc list-inside text-red-700">
-                  {duplicateFlags.map(student => (
-                    <li key={student}>{student}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
+									{/* --- Conditionally render the small upload box --- */}
+									{showUploadBoxFor && showUploadBoxFor.id === cls.id && (
+										<div className="bg-gray-50 border-t p-4">
+											<label	
+												htmlFor={`file-upload-${cls.id}`}	
+												className="w-full text-center cursor-pointer bg-white border border-gray-300 rounded-lg p-3 block hover:bg-gray-100"
+											>
+												Click to select participant list (.csv)
+											</label>
+											<input	
+												id={`file-upload-${cls.id}`}	
+												type="file"	
+												accept=".csv"
+												className="hidden"
+												onChange={handleFileSelect}
+											/>
+										</div>
+									)}
+								</div>
+							))
+						) : (
+							<div className="text-center py-8 text-gray-500">
+								<p>No classes scheduled for this day.</p>
+							</div>
+						)}
+					</div>
+				</div>
+				
+				{attendanceSession && (
+					<div className="mt-8 bg-white rounded-xl shadow-sm p-6">
+						<h2 className="text-xl font-semibold mb-4">Attendance Session: {attendanceSession.class.subject}</h2>
+						
+						{duplicateFlags.length > 0 && (
+							<div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+								<div className="flex items-center space-x-2 mb-2">
+									<AlertTriangle className="w-5 h-5 text-red-600" />
+									<h3 className="font-semibold text-red-800">Duplicate Browser Fingerprints Detected</h3>
+								</div>
+								<p className="text-red-700 mb-2">The following students have suspicious activity:</p>
+								<ul className="list-disc list-inside text-red-700">
+									{duplicateFlags.map(student => (
+										<li key={student}>{student}</li>
+									))}
+								</ul>
+							</div>
+						)}
 
-            <div className="space-y-3">
-              {attendanceSession.students.map(student => (
-                <div key={student.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <img
-                      src={student.photo}
-                      alt={student.name}
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
-                    <div>
-                      <p className="font-medium">{student.name}</p>
-                      <p className="text-sm text-gray-600">{student.rollNo}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                      <input type="checkbox" defaultChecked className="form-checkbox" />
-                      <span className="text-sm">Present</span>
-                    </label>
-                  </div>
-                </div>
-              ))}
-              
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <img
-                      src="https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=150"
-                      alt="Emma Davis"
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
-                    <div>
-                      <p className="font-medium">Emma Davis</p>
-                      <p className="text-sm text-gray-600">CS004</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                      <input type="checkbox" className="form-checkbox" />
-                      <span className="text-sm">Absent</span>
-                    </label>
-                  </div>
-                </div>
-            </div>
+						<div className="space-y-3">
+							{attendanceSession.students.map(student => (
+								<div key={student.id} className="flex items-center justify-between p-3 border rounded-lg">
+									<div className="flex items-center space-x-3">
+										<img
+											src={student.photo}
+											alt={student.name}
+											className="w-10 h-10 rounded-full object-cover"
+										/>
+										<div>
+											<p className="font-medium">{student.name}</p>
+											<p className="text-sm text-gray-600">{student.rollNo}</p>
+										</div>
+									</div>
+									<div className="flex items-center space-x-2">
+										<label className="flex items-center space-x-2 cursor-pointer">
+											<input type="checkbox" defaultChecked className="form-checkbox" />
+											<span className="text-sm">Present</span>
+										</label>
+									</div>
+								</div>
+							))}
+							
+							<div className="flex items-center justify-between p-3 border rounded-lg">
+								<div className="flex items-center space-x-3">
+									<img
+										src="https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=150"
+										alt="Emma Davis"
+										className="w-10 h-10 rounded-full object-cover"
+									/>
+									<div>
+										<p className="font-medium">Emma Davis</p>
+										<p className="text-sm text-gray-600">CS004</p>
+									</div>
+								</div>
+								<div className="flex items-center space-x-2">
+									<label className="flex items-center space-x-2 cursor-pointer">
+										<input type="checkbox" className="form-checkbox" />
+										<span className="text-sm">Absent</span>
+									</label>
+								</div>
+							</div>
+						</div>
 
-            <div className="mt-6 flex space-x-3">
-              <button className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors">
-                Submit Attendance
-              </button>
-              <button
-                onClick={() => setAttendanceSession(null)}
-                className="bg-gray-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-gray-700 transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
+						<div className="mt-6 flex space-x-3">
+							<button className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors">
+								Submit Attendance
+							</button>
+							<button
+								onClick={() => setAttendanceSession(null)}
+								className="bg-gray-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-gray-700 transition-colors"
+							>
+								Cancel
+							</button>
+						</div>
+					</div>
+				)}
 
-        <QRModal
-          isOpen={showQRModal}
-          onClose={() => setShowQRModal(false)}
-          onEndSession={handleEndSession}
-          classInfo={selectedClass}
-        />
-      </div>
-    );
-  };
-
+				<QRModal
+					isOpen={showQRModal}
+					onClose={() => setShowQRModal(false)}
+					onEndSession={handleEndSession}
+					classInfo={selectedClass}
+				/>
+			</div>
+		);
+	};
 
 
-  const renderAttendance = () => (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold mb-8">Class Attendance Management</h1>
 
-      <div className="space-y-8">
-        {professorClasses.map(classData => (
-          <div key={classData.id} className="bg-white p-6 rounded-xl shadow-sm">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold mb-2">{classData.subject}</h2>
-              <div className="flex space-x-6 text-sm text-gray-600">
-                <span>Class: {classData.className}</span>
-                <span>Semester: {classData.semester}</span>
-                <span>Program: {classData.program}</span>
-              </div>
-            </div>
+	const renderAttendance = () => (
+		<div className="p-8">
+			<h1 className="text-3xl font-bold mb-8">Class Attendance Management</h1>
 
-            <div className="space-y-3">
-              <h3 className="font-semibold">Students</h3>
-              {classData.students.map(student => (
-                <div key={student.id} className={`flex items-center justify-between p-3 border rounded-lg ${
-                  student.attendance < 75 ? 'border-red-300 bg-red-50' : 'border-gray-200'
-                }`}>
-                  <div className="flex items-center space-x-3">
-                    <img
-                      src={student.photo}
-                      alt={student.name}
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
-                    <div>
-                      <p className={`font-medium ${student.attendance < 75 ? 'text-red-700' : ''}`}>
-                        {student.name}
-                      </p>
-                      <p className="text-sm text-gray-600">{student.rollNo}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className={`font-semibold ${
-                      student.attendance >= 85 ? 'text-green-600' : 
-                      student.attendance >= 75 ? 'text-yellow-600' : 'text-red-600'
-                    }`}>
-                      {student.attendance}%
-                    </p>
-                    {student.attendance < 75 && (
-                      <p className="text-xs text-red-600">At Risk</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+			<div className="space-y-8">
+				{professorClasses.map(classData => (
+					<div key={classData.id} className="bg-white p-6 rounded-xl shadow-sm">
+						<div className="mb-6">
+							<h2 className="text-xl font-semibold mb-2">{classData.subject}</h2>
+							<div className="flex space-x-6 text-sm text-gray-600">
+								<span>Class: {classData.className}</span>
+								<span>Semester: {classData.semester}</span>
+								<span>Program: {classData.program}</span>
+							</div>
+						</div>
 
-  return (
-    <div className="flex">
-      <Sidebar 
-        activeView={activeView}
-        setActiveView={setActiveView}
-        items={sidebarItems}
-        userRole="Professor"
-      />
-      <div className="flex-1 bg-gray-50">
-        {activeView === 'profile' && renderProfile()}
-        {activeView === 'schedule' && renderSchedule()}
-        {activeView === 'attendance' && renderAttendance()}
-      </div>
-    </div>
-  );
+						<div className="space-y-3">
+							<h3 className="font-semibold">Students</h3>
+							{classData.students.map(student => (
+								<div key={student.id} className={`flex items-center justify-between p-3 border rounded-lg ${
+									student.attendance < 75 ? 'border-red-300 bg-red-50' : 'border-gray-200'
+								}`}>
+									<div className="flex items-center space-x-3">
+										<img
+											src={student.photo}
+											alt={student.name}
+											className="w-10 h-10 rounded-full object-cover"
+										/>
+										<div>
+											<p className={`font-medium ${student.attendance < 75 ? 'text-red-700' : ''}`}>
+												{student.name}
+											</p>
+											<p className="text-sm text-gray-600">{student.rollNo}</p>
+										</div>
+									</div>
+									<div className="text-right">
+										<p className={`font-semibold ${
+											student.attendance >= 85 ? 'text-green-600' : 
+											student.attendance >= 75 ? 'text-yellow-600' : 'text-red-600'
+										}`}>
+											{student.attendance}%
+										</p>
+										{student.attendance < 75 && (
+											<p className="text-xs text-red-600">At Risk</p>
+										)}
+									</div>
+								</div>
+							))}
+						</div>
+					</div>
+				))}
+			</div>
+		</div>
+	);
+
+	return (
+		<div className="flex">
+			<Sidebar 
+				activeView={activeView}
+				setActiveView={setActiveView}
+				items={sidebarItems}
+				userRole="Professor"
+			/>
+			<div className="flex-1 bg-gray-50">
+				{activeView === 'profile' && renderProfile()}
+				{activeView === 'schedule' && renderSchedule()}
+				{activeView === 'attendance' && renderAttendance()}
+			</div>
+		</div>
+	);
 };
 
 // Student Dashboard
 const StudentDashboard = () => {
-  const [activeView, setActiveView] = useState('profile');
-  const [showCheckInModal, setShowCheckInModal] = useState(false);
-  const [checkInClass, setCheckInClass] = useState(null);
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [checkInStep, setCheckInStep] = useState('idle');
-  const startCheckIn = () => {
-    setCheckInStep('gps');
-    // Simulate the GPS check, then move to the scan step
-    setTimeout(() => {
-      console.log("GPS check passed (simulated).");
-      setCheckInStep('scan');
-    }, 1500); 
-  };
-  const handleScanSuccess = (scannedData) => {
-    console.log("A QR code was scanned. Data:", scannedData);
-    console.log("Accepting scan without verification and moving to next step.");
+	const [activeView, setActiveView] = useState('profile');
+	const [showCheckInModal, setShowCheckInModal] = useState(false);
+	const [checkInClass, setCheckInClass] = useState(null);
+	const [currentDate, setCurrentDate] = useState(new Date());
+	const [checkInStep, setCheckInStep] = useState('idle');
+	const startCheckIn = () => {
+		setCheckInStep('gps');
+		// Simulate the GPS check, then move to the scan step
+		setTimeout(() => {
+			console.log("GPS check passed (simulated).");
+			setCheckInStep('scan');
+		}, 1500);	
+	};
+	const handleScanSuccess = (scannedData) => {
+		console.log("A QR code was scanned. Data:", scannedData);
+		console.log("Accepting scan without verification and moving to next step.");
 
-    // Immediately move to the next step in the flow
-    setCheckInStep('biometric');
-    
-    // Simulate the biometric check, then move to the success step
-    setTimeout(() => {
-      console.log("Biometric check passed (simulated).");
-      setCheckInStep('success');
-    }, 1500);
-  };
+		// Immediately move to the next step in the flow
+		setCheckInStep('biometric');
+		
+		// Simulate the biometric check, then move to the success step
+		setTimeout(() => {
+			console.log("Biometric check passed (simulated).");
+			setCheckInStep('success');
+		}, 1500);
+	};
 
-  const sidebarItems = [
-    { key: 'profile', label: 'Profile', icon: User },
-    { key: 'schedule', label: 'Schedule', icon: Calendar },
-    { key: 'attendance', label: 'Attendance', icon: CheckCircle }
-  ];
+	const sidebarItems = [
+		{ key: 'profile', label: 'Profile', icon: User },
+		{ key: 'schedule', label: 'Schedule', icon: Calendar },
+		{ key: 'attendance', label: 'Attendance', icon: CheckCircle }
+	];
 
-  const studentData = mockStudents["1-A"][0]; // Alex Johnson
+	const studentData = mockStudents["1-A"][0]; // Alex Johnson
 
-  const handleCheckIn = (classInfo) => {
-    setCheckInClass(classInfo);
-    setShowCheckInModal(true);
-  };
+	const handleCheckIn = (classInfo) => {
+		setCheckInClass(classInfo);
+		setShowCheckInModal(true);
+	};
 
-  const getTodaysSchedule = () => {
-    const dayName = currentDate.toLocaleDateString('en-US', { weekday: 'long' });
-    return mockSchedule[dayName] || [];
-  };
+	const getTodaysSchedule = () => {
+		const dayName = currentDate.toLocaleDateString('en-US', { weekday: 'long' });
+		return mockSchedule[dayName] || [];
+	};
 
-  const renderProfile = () => (
-    <div className="p-8">
-      <div className="bg-white p-8 rounded-xl shadow-sm mb-8">
-        <div className="flex items-center space-x-6 mb-8">
-          <img
-            src={studentData.photo}
-            alt={studentData.name}
-            className="w-24 h-24 rounded-full object-cover"
-          />
-          <div>
-            <h1 className="text-3xl font-bold">{studentData.name}</h1>
-            <p className="text-gray-600">{studentData.degree} {studentData.department}</p>
-            <p className="text-gray-600">Roll No: {studentData.rollNo}</p>
-            <p className="text-gray-600">{studentData.semester}</p>
-          </div>
-        </div>
+	const renderProfile = () => (
+		<div className="p-8">
+			<div className="bg-white p-8 rounded-xl shadow-sm mb-8">
+				<div className="flex items-center space-x-6 mb-8">
+					<img
+						src={studentData.photo}
+						alt={studentData.name}
+						className="w-24 h-24 rounded-full object-cover"
+					/>
+					<div>
+						<h1 className="text-3xl font-bold">{studentData.name}</h1>
+						<p className="text-gray-600">{studentData.degree} {studentData.department}</p>
+						<p className="text-gray-600">Roll No: {studentData.rollNo}</p>
+						<p className="text-gray-600">{studentData.semester}</p>
+					</div>
+				</div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-semibold text-gray-600 mb-2">Student Status</h4>
-            <p className="font-medium">{studentData.studentStatus}</p>
-          </div>
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-semibold text-gray-600 mb-2">Admission No</h4>
-            <p className="font-medium">{studentData.admissionNo}</p>
-          </div>
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-semibold text-gray-600 mb-2">Admission Year</h4>
-            <p className="font-medium">{studentData.admissionYear}</p>
-          </div>
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-semibold text-gray-600 mb-2">Roll No</h4>
-            <p className="font-medium">{studentData.rollNo}</p>
-          </div>
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-semibold text-gray-600 mb-2">Degree</h4>
-            <p className="font-medium">{studentData.degree}</p>
-          </div>
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-semibold text-gray-600 mb-2">Department</h4>
-            <p className="font-medium">{studentData.department}</p>
-          </div>
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-semibold text-gray-600 mb-2">Semester</h4>
-            <p className="font-medium">{studentData.semester}</p>
-          </div>
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-semibold text-gray-600 mb-2">Course Name</h4>
-            <p className="font-medium">{studentData.courseName}</p>
-          </div>
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-semibold text-gray-600 mb-2">College</h4>
-            <p className="font-medium">{studentData.college}</p>
-          </div>
-          <div className="bg-gray-50 p-4 rounded-lg col-span-full">
-            <h4 className="font-semibold text-gray-600 mb-2">Curriculum Plan</h4>
-            <p className="font-medium">{studentData.curriculumPlan}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+					<div className="bg-gray-50 p-4 rounded-lg">
+						<h4 className="font-semibold text-gray-600 mb-2">Student Status</h4>
+						<p className="font-medium">{studentData.studentStatus}</p>
+					</div>
+					<div className="bg-gray-50 p-4 rounded-lg">
+						<h4 className="font-semibold text-gray-600 mb-2">Admission No</h4>
+						<p className="font-medium">{studentData.admissionNo}</p>
+					</div>
+					<div className="bg-gray-50 p-4 rounded-lg">
+						<h4 className="font-semibold text-gray-600 mb-2">Admission Year</h4>
+						<p className="font-medium">{studentData.admissionYear}</p>
+					</div>
+					<div className="bg-gray-50 p-4 rounded-lg">
+						<h4 className="font-semibold text-gray-600 mb-2">Roll No</h4>
+						<p className="font-medium">{studentData.rollNo}</p>
+					</div>
+					<div className="bg-gray-50 p-4 rounded-lg">
+						<h4 className="font-semibold text-gray-600 mb-2">Degree</h4>
+						<p className="font-medium">{studentData.degree}</p>
+					</div>
+					<div className="bg-gray-50 p-4 rounded-lg">
+						<h4 className="font-semibold text-gray-600 mb-2">Department</h4>
+						<p className="font-medium">{studentData.department}</p>
+					</div>
+					<div className="bg-gray-50 p-4 rounded-lg">
+						<h4 className="font-semibold text-gray-600 mb-2">Semester</h4>
+						<p className="font-medium">{studentData.semester}</p>
+					</div>
+					<div className="bg-gray-50 p-4 rounded-lg">
+						<h4 className="font-semibold text-gray-600 mb-2">Course Name</h4>
+						<p className="font-medium">{studentData.courseName}</p>
+					</div>
+					<div className="bg-gray-50 p-4 rounded-lg">
+						<h4 className="font-semibold text-gray-600 mb-2">College</h4>
+						<p className="font-medium">{studentData.college}</p>
+					</div>
+					<div className="bg-gray-50 p-4 rounded-lg col-span-full">
+						<h4 className="font-semibold text-gray-600 mb-2">Curriculum Plan</h4>
+						<p className="font-medium">{studentData.curriculumPlan}</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	);
 
-  const renderSchedule = () => {
-    const todaysSchedule = getTodaysSchedule();
-    
-    return (
-      <div className="p-8">
-        <h1 className="text-3xl font-bold mb-8">My Schedule</h1>
+	const renderSchedule = () => {
+		const todaysSchedule = getTodaysSchedule();
+		
+		return (
+			<div className="p-8">
+				<h1 className="text-3xl font-bold mb-8">My Schedule</h1>
 
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <DateNavigation currentDate={currentDate} onDateChange={setCurrentDate} />
-          
-          <div className="space-y-4">
-  {todaysSchedule.map((cls, index) => (
-    <div key={cls.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-      <div>
-        <h3 className="font-semibold">{cls.subject}</h3>
-        <p className="text-sm text-gray-600">{cls.time} • {cls.room}</p>
-        <p className="text-sm text-gray-600">Prof: {cls.professor}</p>
-      </div>
-      <div className="flex items-center space-x-3">
-        <div className="flex items-center space-x-2">
-          <div className={`w-3 h-3 rounded-full ${index === 0 ? 'bg-green-500' : 'bg-red-500'}`}></div>
-          <span className={`text-sm font-medium ${index === 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {index === 0 ? 'Session Active' : 'Session Not Started'}
-          </span>
-        </div>
-        <button
-          onClick={() => handleCheckIn(cls)}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors"
-        >
-          Check-In Now
-        </button>
-      </div>
-    </div>
-  ))}
+				<div className="bg-white rounded-xl shadow-sm p-6">
+					<DateNavigation currentDate={currentDate} onDateChange={setCurrentDate} />
+					
+					<div className="space-y-4">
+	{todaysSchedule.map((cls, index) => (
+		<div key={cls.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+			<div>
+				<h3 className="font-semibold">{cls.subject}</h3>
+				<p className="text-sm text-gray-600">{cls.time} • {cls.room}</p>
+				<p className="text-sm text-gray-600">Prof: {cls.professor}</p>
+			</div>
+			<div className="flex items-center space-x-3">
+				<div className="flex items-center space-x-2">
+					<div className={`w-3 h-3 rounded-full ${index === 0 ? 'bg-green-500' : 'bg-red-500'}`}></div>
+					<span className={`text-sm font-medium ${index === 0 ? 'text-green-600' : 'text-red-600'}`}>
+						{index === 0 ? 'Session Active' : 'Session Not Started'}
+					</span>
+				</div>
+				<button
+					onClick={() => handleCheckIn(cls)}
+					className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors"
+				>
+					Check-In Now
+				</button>
+			</div>
+		</div>
+	))}
 </div>
-        </div>
+				</div>
 
-        <CheckInModal
-          isOpen={showCheckInModal}
-          onClose={() => setShowCheckInModal(false)}
-          className={checkInClass?.subject}
-        />
-      </div>
-    );
-  };
+				<CheckInModal
+					isOpen={showCheckInModal}
+					onClose={() => setShowCheckInModal(false)}
+					className={checkInClass?.subject}
+				/>
+			</div>
+		);
+	};
 
-  const renderAttendance = () => (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold mb-8">My Attendance</h1>
+	const renderAttendance = () => (
+		<div className="p-8">
+			<h1 className="text-3xl font-bold mb-8">My Attendance</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white p-8 rounded-xl shadow-sm text-center">
-          <h2 className="text-lg font-semibold text-gray-600 mb-2">Current Month Attendance</h2>
-          <p className="text-4xl font-bold text-blue-600 mb-4">88%</p>
-          <p className="text-gray-600">22 out of 25 classes attended</p>
-        </div>
-        
-        <div className="bg-white p-8 rounded-xl shadow-sm text-center">
-          <h2 className="text-lg font-semibold text-gray-600 mb-2">Overall Semester Attendance</h2>
-          <p className="text-4xl font-bold text-green-600 mb-4">{studentData.attendance}%</p>
-          <p className="text-gray-600">68 out of 80 classes attended</p>
-        </div>
-      </div>
+			<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+				<div className="bg-white p-8 rounded-xl shadow-sm text-center">
+					<h2 className="text-lg font-semibold text-gray-600 mb-2">Current Month Attendance</h2>
+					<p className="text-4xl font-bold text-blue-600 mb-4">88%</p>
+					<p className="text-gray-600">22 out of 25 classes attended</p>
+				</div>
+				
+				<div className="bg-white p-8 rounded-xl shadow-sm text-center">
+					<h2 className="text-lg font-semibold text-gray-600 mb-2">Overall Semester Attendance</h2>
+					<p className="text-4xl font-bold text-green-600 mb-4">{studentData.attendance}%</p>
+					<p className="text-gray-600">68 out of 80 classes attended</p>
+				</div>
+			</div>
 
-      <BarChart
-        title="Subject-wise Attendance"
-        data={Object.entries(studentData.subjectAttendance).map(([subject, attendance]) => ({
-          label: subject,
-          value: attendance
-        }))}
-      />
-    </div>
-  );
+			<BarChart
+				title="Subject-wise Attendance"
+				data={Object.entries(studentData.subjectAttendance).map(([subject, attendance]) => ({
+					label: subject,
+					value: attendance
+				}))}
+			/>
+		</div>
+	);
 
-  return (
-    <div className="flex">
-      <Sidebar 
-        activeView={activeView}
-        setActiveView={setActiveView}
-        items={sidebarItems}
-        userRole="Student"
-      />
-      <div className="flex-1 bg-gray-50">
-        {activeView === 'profile' && renderProfile()}
-        {activeView === 'schedule' && renderSchedule()}
-        {activeView === 'attendance' && renderAttendance()}
-      </div>
-    </div>
-  );
+	return (
+		<div className="flex">
+			<Sidebar 
+				activeView={activeView}
+				setActiveView={setActiveView}
+				items={sidebarItems}
+				userRole="Student"
+			/>
+			<div className="flex-1 bg-gray-50">
+				{activeView === 'profile' && renderProfile()}
+				{activeView === 'schedule' && renderSchedule()}
+				{activeView === 'attendance' && renderAttendance()}
+			</div>
+		</div>
+	);
 };
 
 // Main App Component
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userRole, setUserRole] = useState(null);
-  const [userEmail, setUserEmail] = useState('');
-  const [showSignup, setShowSignup] = useState(false);
-  const [scriptsLoaded, setScriptsLoaded] = useState(false);
+	const [isAuthenticated, setIsAuthenticated] = useState(false);
+	const [userRole, setUserRole] = useState(null);
+	const [userEmail, setUserEmail] = useState('');
+	const [showSignup, setShowSignup] = useState(false);
+	const [scriptsLoaded, setScriptsLoaded] = useState(false);
 
-  useEffect(() => {
-    const loadScript = (src) => {
-      return new Promise((resolve, reject) => {
-        if (document.querySelector(`script[src="${src}"]`)) {
-            resolve();
-            return;
-        }
-        const script = document.createElement('script');
-        script.src = src;
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
-        document.head.appendChild(script);
-      });
-    };
+	useEffect(() => {
+		const loadScript = (src) => {
+			return new Promise((resolve, reject) => {
+				if (document.querySelector(`script[src="${src}"]`)) {
+					resolve();
+					return;
+				}
+				const script = document.createElement('script');
+				script.src = src;
+				script.onload = () => resolve();
+				script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+				document.head.appendChild(script);
+			});
+		};
 
-    Promise.all([
-      loadScript("https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"),
-      loadScript("https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js")
-    ]).then(() => {
-      console.log("All scripts loaded successfully");
-      setScriptsLoaded(true);
-    }).catch(error => {
-      console.error(error);
-      // You could set an error state here to show a message to the user
-    });
-  }, []);
+		Promise.all([
+			loadScript("https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"),
+			loadScript("https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js")
+		]).then(() => {
+			console.log("All scripts loaded successfully");
+			setScriptsLoaded(true);
+		}).catch(error => {
+			console.error(error);
+			// You could set an error state here to show a message to the user
+		});
+	}, []);
 
 
-  const handleLogin = (role, email) => {
-    setUserRole(role);
-    setUserEmail(email);
-    setIsAuthenticated(true);
-  };
+	const handleLogin = (role, email) => {
+		setUserRole(role);
+		setUserEmail(email);
+		setIsAuthenticated(true);
+	};
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    setUserRole(null);
-    setUserEmail('');
-  };
+	const handleLogout = () => {
+		setIsAuthenticated(false);
+		setUserRole(null);
+		setUserEmail('');
+	};
 
-  const toggleSignup = () => {
-    setShowSignup(!showSignup);
-  };
-  
-  if (!scriptsLoaded) {
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100">
-            <div className="text-center">
-                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#647FBC] mx-auto mb-4"></div>
-                <p className="text-lg text-gray-600">Loading essential components...</p>
-            </div>
-        </div>
-    );
-  }
+	const toggleSignup = () => {
+		setShowSignup(!showSignup);
+	};
+	
+	if (!scriptsLoaded) {
+		return (
+			<div className="min-h-screen flex items-center justify-center bg-gray-100">
+				<div className="text-center">
+					<div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#647FBC] mx-auto mb-4"></div>
+					<p className="text-lg text-gray-600">Loading essential components...</p>
+				</div>
+			</div>
+		);
+	}
 
-  if (!isAuthenticated) {
-    return (
-      <LoginPage 
-        onLogin={handleLogin}
-        showSignup={showSignup}
-        toggleSignup={toggleSignup}
-      />
-    );
-  }
+	if (!isAuthenticated) {
+		return (
+			<LoginPage 
+				onLogin={handleLogin}
+				showSignup={showSignup}
+				toggleSignup={toggleSignup}
+			/>
+		);
+	}
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {userRole === 'Admin' && <AdminDashboard />}
-      {userRole === 'Professor' && <ProfessorDashboard />}
-      {userRole === 'Student' && <StudentDashboard />}
-      
-      <button
-        onClick={handleLogout}
-        className="fixed top-4 right-4 bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors z-10"
-      >
-        Logout
-      </button>
-    </div>
-  );
+	return (
+		<div className="min-h-screen bg-gray-50">
+			{userRole === 'Admin' && <AdminDashboard />}
+			{userRole === 'Professor' && <ProfessorDashboard />}
+			{userRole === 'Student' && <StudentDashboard />}
+			
+			<button
+				onClick={handleLogout}
+				className="fixed top-4 right-4 bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors z-10"
+			>
+				Logout
+			</button>
+		</div>
+	);
 }
 
 export default App;
-
