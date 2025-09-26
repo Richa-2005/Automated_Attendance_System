@@ -139,8 +139,6 @@ const LocationVerification = ({ onSuccess, onError }) => {
 };
 
 
-// --- QR Code Generator Component ---
-// This can also be moved to its own file if you like
 export const QRCodeGenerator = ({ classInfo, refreshRate = 15000 }) => {
   const [qrValue, setQrValue] = useState('');
   const qrRef = useRef(null);
@@ -148,20 +146,21 @@ export const QRCodeGenerator = ({ classInfo, refreshRate = 15000 }) => {
   useEffect(() => {
     const generateQrValue = () => {
       const timestamp = Date.now();
-      // The data now includes the unique class ID
       const data = JSON.stringify({
-        classId: classInfo?.id, // Use the real class ID
+        classId: classInfo?.id,
         subject: classInfo?.subject,
         timestamp: timestamp,
       });
       setQrValue(data);
 
-      // --- CRITICAL ADDITION: Write to Firebase ---
-      // This makes the current QR code value available for students to verify.
       if (classInfo?.id) {
-        // Old way: database.ref(...).set(...)
-        // New way: set(ref(database, ...), ...)
-        set(ref(database, `sessions/${classInfo.id}/validCode`), data);
+        // --- ADDED LOGGING ---
+        console.log(`PROFESSOR: Writing to Firebase for class ${classInfo.id}. Value:`, data);
+        const sessionData = {
+            validCode: data,
+            generatedAt: timestamp
+        };
+        set(ref(database, `sessions/${classInfo.id}`), sessionData);
       }
     };
 
@@ -171,31 +170,41 @@ export const QRCodeGenerator = ({ classInfo, refreshRate = 15000 }) => {
     return () => {
       clearInterval(intervalId);
       if (classInfo?.id) {
+        console.log(`PROFESSOR: Clearing session for class ${classInfo.id}.`);
         set(ref(database, `sessions/${classInfo.id}`), null);
       }
     };
   }, [classInfo, refreshRate]);
 
-	useEffect(() => {
-		if (qrValue && qrRef.current && typeof QRCode !== 'undefined') {
-			qrRef.current.innerHTML = '';
-			new QRCode(qrRef.current, {
-				text: qrValue,
-				width: 192,
-				height: 192,
-				colorDark : "#000000",
-				colorLight : "#ffffff",
-				correctLevel : QRCode.CorrectLevel.H
-			});
-		}
-	}, [qrValue]);
 
-	return (
-		<div className="bg-white p-4 rounded-lg shadow-inner flex items-center justify-center w-[224px] h-[224px]">
-			<div ref={qrRef} />
-		</div>
-	);
+  useEffect(() => {
+    if (qrValue && qrRef.current && typeof QRCode !== 'undefined') {
+        qrRef.current.innerHTML = '';
+        new QRCode(qrRef.current, {
+            text: qrValue,
+            width: 192,
+            height: 192,
+            colorDark : "#000000",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.H
+        });
+    }
+  }, [qrValue]);
+
+  return (
+    <div className="bg-white p-4 rounded-lg shadow-inner flex items-center justify-center w-[224px] h-[224px]">
+      <div ref={qrRef}>
+        {!qrValue && (
+            <div className="w-48 h-48 flex items-center justify-center text-gray-500">
+             Generating QR Code...
+            </div>
+        )}
+      </div>
+    </div>
+  );
 };
+
+
 
 // Mock Data
 const mockUniversity = {
@@ -444,6 +453,7 @@ const CheckInModal = ({ isOpen, onClose, className }) => {
 	const [isLoading, setIsLoading] = useState(false);
 	const [scanError, setScanError] = useState(null);
 
+  const scannerControl = useRef({ stop: () => {} });
 	const advanceStep = useCallback((nextStep) => {
 		setIsLoading(true);
 		setScanError(null);
@@ -452,52 +462,50 @@ const CheckInModal = ({ isOpen, onClose, className }) => {
 
   
   const handleScanSuccess = useCallback((data) => {
+    // Prevent multiple verifications at once
+    if (isLoading) return;
+
     setIsLoading(true);
     setScanError(null);
 
     try {
       const qrData = JSON.parse(data);
-      if (!qrData.classId) {
-        setScanError("Not a valid class QR code.");
-        setIsLoading(false);
-        return;
-      }
+      if (!qrData.classId) throw new Error("Invalid QR data structure.");
 
-      // Check the database for the valid code for this class session
-      const validCodeRef = ref(database, `sessions/${qrData.classId}/validCode`);
+      // --- ADDED LOGGING ---
+      console.log(`STUDENT: Scanned QR. Checking Firebase for class ${qrData.classId}.`);
+      const sessionRef = ref(database, `sessions/${qrData.classId}`);
       
-      get(validCodeRef).then((snapshot) => {
-        const validCode = snapshot.val();
+      get(sessionRef).then((snapshot) => {
+        const sessionData = snapshot.val();
         
-        // Compare the scanned code with the code from the database
-        if (data === validCode) {
-          // SUCCESS! The codes match.
-          console.log("Verification Successful!");
+        // --- ADDED LOGGING ---
+        console.log("STUDENT: Scanned data is:", data);
+        console.log("STUDENT: Data from Firebase is:", sessionData?.validCode);
+
+        if (sessionData && data === sessionData.validCode) {
+          console.log("Verification SUCCESSFUL!");
+          // --- NEW: Manually stop the scanner on success ---
+          if(scannerControl.current.stop) scannerControl.current.stop();
           advanceStep(3); // Move to the biometric step
         } else {
-          // FAILURE! The code was old or invalid.
-          setScanError("Expired or invalid QR code. Please scan again.");
-          setIsLoading(false);
+          console.log("Verification FAILED. Code is old or invalid.");
+          setScanError("Expired QR code. Please wait for the next one.");
+          setIsLoading(false); // Allow scanning to continue
         }
-      }).catch((error) => {
-        console.error("Firebase read error:", error);
-        setScanError("Could not verify code. Check connection.");
-        setIsLoading(false);
       });
-
     } catch (e) {
       setScanError("Not a valid class QR code.");
-      setIsLoading(false);
+      setIsLoading(false); // Allow scanning to continue
     }
-  }, [advanceStep, className]);
+  }, [advanceStep, isLoading]);
   
   const handleBiometricSuccess = useCallback(() => { advanceStep(4); }, [advanceStep]);
   const handleClose = () => { setStep(1); setScanError(null); onClose(); };
   
-  useEffect(() => { if(isOpen) { setStep(1); setScanError(null); } }, [isOpen])
+  useEffect(() => { if(isOpen) { setStep(1); setScanError(null); } }, [isOpen]);
 
-	if (!isOpen) return null;
-
+  if (!isOpen) return null;
 	const steps = [
 		{ 
 			title: "Location Verification", 
@@ -516,22 +524,22 @@ const CheckInModal = ({ isOpen, onClose, className }) => {
 			actionText: null 
 		},
 		{ 
-			title: "QR Code Scanning", 
-			icon: QrCode, 
-			content: ( 
-				<div> 
-					<QRCodeScanner onScanSuccess={handleScanSuccess} onScanError={(err) => setScanError("Could not start camera.")} /> 
-					{scanError && <p className="text-red-500 text-center mt-3 text-sm font-semibold">{scanError}</p>} 
-					<button 
-						onClick={() => advanceStep(3)} 
-						className="w-full mt-4 bg-yellow-500 text-white p-2 rounded-lg font-semibold hover:bg-yellow-600 transition-colors text-sm"
-					>
-						(Test) Skip to Biometrics
-					</button> 
-				</div> 
-			), 
-			actionText: null 
-		},
+      title: "QR Code Scanning", 
+      icon: QrCode, 
+      content: ( 
+        <div> 
+          {/* We now pass the scannerControl ref to the QRCodeScanner */}
+          <QRCodeScanner 
+            onScanSuccess={handleScanSuccess} 
+            onScanError={(err) => setScanError("Could not start camera.")}
+            controlRef={scannerControl}
+          /> 
+          {/* The error message will now show without stopping the camera */}
+          {scanError && <p className="text-red-500 text-center mt-3 text-sm font-semibold">{scanError}</p>} 
+          {isLoading && <p className="text-blue-500 text-center mt-3 text-sm font-semibold">Verifying...</p>}
+        </div> 
+      ), 
+    },
 		{ title: "Biometric Verification", icon: Fingerprint, content: <BiometricAuth onSuccess={handleBiometricSuccess} />, actionText: null },
 		{ title: "Success", icon: CheckCircle, content: <p className="text-center text-green-700">You have been successfully marked present!</p>, actionText: "Complete", action: handleClose }
 	];
