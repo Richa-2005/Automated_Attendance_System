@@ -1,5 +1,7 @@
 import QRCodeScanner from './components/QRCodeGenerator.jsx'; // Assuming it's in the same folder
 import BiometricAuth from './components/BiometricAuth.jsx'; // Assuming it's in the same folder
+import { database } from '../src/firebase.js';
+import { ref, set } from "firebase/database";
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
 	Users, 
@@ -139,24 +141,40 @@ const LocationVerification = ({ onSuccess, onError }) => {
 
 // --- QR Code Generator Component ---
 // This can also be moved to its own file if you like
-const QRCodeGenerator = ({ classInfo, refreshRate = 5000 }) => {
-	const [qrValue, setQrValue] = useState('');
-	const qrRef = useRef(null);
+export const QRCodeGenerator = ({ classInfo, refreshRate = 5000 }) => {
+  const [qrValue, setQrValue] = useState('');
+  const qrRef = useRef(null);
 
-	useEffect(() => {
-		const generateQrValue = () => {
-			const timestamp = Date.now();
-			const data = JSON.stringify({
-				classId: classInfo?.id || 'default-class-id',
-				subject: classInfo?.subject || 'default-subject',
-				timestamp: timestamp,
-			});
-			setQrValue(data);
-		};
-		generateQrValue();
-		const intervalId = setInterval(generateQrValue, refreshRate);
-		return () => clearInterval(intervalId);
-	}, [classInfo, refreshRate]);
+  useEffect(() => {
+    const generateQrValue = () => {
+      const timestamp = Date.now();
+      // The data now includes the unique class ID
+      const data = JSON.stringify({
+        classId: classInfo?.id, // Use the real class ID
+        subject: classInfo?.subject,
+        timestamp: timestamp,
+      });
+      setQrValue(data);
+
+      // --- CRITICAL ADDITION: Write to Firebase ---
+      // This makes the current QR code value available for students to verify.
+      if (classInfo?.id) {
+        // Old way: database.ref(...).set(...)
+        // New way: set(ref(database, ...), ...)
+        set(ref(database, `sessions/${classInfo.id}/validCode`), data);
+      }
+    };
+
+    generateQrValue();
+    const intervalId = setInterval(generateQrValue, refreshRate);
+
+    return () => {
+      clearInterval(intervalId);
+      if (classInfo?.id) {
+        set(ref(database, `sessions/${classInfo.id}`), null);
+      }
+    };
+  }, [classInfo, refreshRate]);
 
 	useEffect(() => {
 		if (qrValue && qrRef.current && typeof QRCode !== 'undefined') {
@@ -420,7 +438,7 @@ const QRModal = ({ isOpen, onClose, onEndSession, classInfo }) => {
 	);
 };
 
-//check in modal for just scan any qr right now.
+
 const CheckInModal = ({ isOpen, onClose, className }) => {
 	const [step, setStep] = useState(1);
 	const [isLoading, setIsLoading] = useState(false);
@@ -432,18 +450,51 @@ const CheckInModal = ({ isOpen, onClose, className }) => {
 		setTimeout(() => { setIsLoading(false); setStep(nextStep); }, 500);
 	}, []);
 
-	// --- THIS IS THE CRITICAL CHANGE ---
-	// We are removing all validation logic. This function now accepts ANY successful scan
-	// and immediately moves to the next step.
-	const handleScanSuccess = useCallback((data) => {
-		console.log("Scan successful (validation skipped for demo). Data:", data);
-		advanceStep(3); // Immediately advance to the biometric step
-	}, [advanceStep]);
-	
-	const handleBiometricSuccess = useCallback(() => { advanceStep(4); }, [advanceStep]);
-	const handleClose = () => { setStep(1); setScanError(null); onClose(); };
-	
-	useEffect(() => { if(isOpen) { setStep(1); setScanError(null); } }, [isOpen])
+  
+  const handleScanSuccess = useCallback((data) => {
+    setIsLoading(true);
+    setScanError(null);
+
+    try {
+      const qrData = JSON.parse(data);
+      if (!qrData.classId) {
+        setScanError("Not a valid class QR code.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Check the database for the valid code for this class session
+      const validCodeRef = ref(database, `sessions/${qrData.classId}/validCode`);
+      
+      get(validCodeRef).then((snapshot) => {
+        const validCode = snapshot.val();
+        
+        // Compare the scanned code with the code from the database
+        if (data === validCode) {
+          // SUCCESS! The codes match.
+          console.log("Verification Successful!");
+          advanceStep(3); // Move to the biometric step
+        } else {
+          // FAILURE! The code was old or invalid.
+          setScanError("Expired or invalid QR code. Please scan again.");
+          setIsLoading(false);
+        }
+      }).catch((error) => {
+        console.error("Firebase read error:", error);
+        setScanError("Could not verify code. Check connection.");
+        setIsLoading(false);
+      });
+
+    } catch (e) {
+      setScanError("Not a valid class QR code.");
+      setIsLoading(false);
+    }
+  }, [advanceStep, className]);
+  
+  const handleBiometricSuccess = useCallback(() => { advanceStep(4); }, [advanceStep]);
+  const handleClose = () => { setStep(1); setScanError(null); onClose(); };
+  
+  useEffect(() => { if(isOpen) { setStep(1); setScanError(null); } }, [isOpen])
 
 	if (!isOpen) return null;
 
@@ -508,6 +559,7 @@ const CheckInModal = ({ isOpen, onClose, className }) => {
 		</div>
 	);
 };
+
 
 
 // Date Navigation Component
