@@ -139,7 +139,7 @@ const LocationVerification = ({ onSuccess, onError }) => {
 };
 
 
-export const QRCodeGenerator = ({ classInfo, refreshRate = 15000 }) => {
+export const QRCodeGenerator = ({ classInfo, refreshRate = 5000 }) => {
   const [qrValue, setQrValue] = useState('');
   const qrRef = useRef(null);
 
@@ -1406,7 +1406,7 @@ const ProfessorDashboard = () => {
 						</div>
 
 						<div className="mt-6 flex space-x-3">
-							<button className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors">
+							<button className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors" onClick={()=>setAttendanceSession(null)}>
 								Submit Attendance
 							</button>
 							<button
