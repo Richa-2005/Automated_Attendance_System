@@ -454,35 +454,43 @@ const CheckInModal = ({ isOpen, onClose, classInfo }) => { // Changed className 
   const handleScanSuccess = useCallback((scannedNonce) => {
     setIsLoading(true);
     setScanError(null);
-    
+    console.log(`%cSTUDENT: Scan successful. Scanned Nonce: ${scannedNonce}`, 'color: blue; font-weight: bold;');
+
     if (!classInfo?.id) {
-        setScanError("Class information is missing.");
+        setScanError("Class information is missing. Cannot verify.");
         setIsLoading(false);
         return;
     }
 
-    console.log(`STUDENT: Scanned nonce: ${scannedNonce}. Checking Firebase for class ${classInfo.id}.`);
+    const verificationTimeout = setTimeout(() => {
+        setIsLoading(false);
+        setScanError("Verification timed out. Please check your network and try again.");
+    }, 10000);
+
     const validNonceRef = ref(database, `sessions/${classInfo.id}/validNonce`);
       
     get(validNonceRef).then((snapshot) => {
-      const validNonce = snapshot.val();
-      console.log(`STUDENT: Nonce from Firebase is: ${validNonce}`);
+        clearTimeout(verificationTimeout);
+        const validNonce = snapshot.val();
+        
+        console.log(`%cSTUDENT: Received Nonce from Firebase: ${validNonce}`, 'color: purple; font-weight: bold;');
       
-      if (scannedNonce === validNonce) {
-        console.log("SUCCESS: Nonce matches!");
-        advanceStep(3);
-      } else {
-        console.log("FAILURE: Nonce does not match.");
-        setScanError("Expired or invalid QR code. Wait for the next one.");
-        setIsLoading(false);
-      }
+        if (scannedNonce === validNonce) {
+            console.log('%cSUCCESS: The nonces match!', 'color: green; font-weight: bold;');
+            advanceStep(3);
+        } else {
+            console.log('%cFAILURE: The nonces DO NOT match.', 'color: red; font-weight: bold;');
+            setScanError("Expired or invalid QR code. Please wait for the next one.");
+            setIsLoading(false);
+        }
     }).catch((error) => {
-      console.error("Firebase read error:", error);
-      setScanError("Could not verify code. Check connection.");
-      setIsLoading(false);
+        clearTimeout(verificationTimeout);
+        console.error("Firebase read error:", error);
+        setScanError("Could not verify code. Check connection.");
+        setIsLoading(false);
     });
 
-  }, [advanceStep, classInfo]);
+}, [advanceStep, classInfo]);
   
   const handleBiometricSuccess = useCallback(() => { advanceStep(4); }, [advanceStep]);
   const handleClose = () => { setStep(1); setScanError(null); onClose(); };
