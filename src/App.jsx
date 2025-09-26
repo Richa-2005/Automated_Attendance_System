@@ -1110,6 +1110,11 @@ const ProfessorDashboard = () => {
 
     // --- MODIFIED: Now accepts platform and linkGenerator ---
 	const handleStartOnlineClass = (classInfo, platformName, linkGenerator) => {
+        if (platformName === 'Other') {
+        // THIS is the line that makes the "Upload CSV" button appear immediately
+        setOnlineSessionStarted(classInfo); 
+        alert(`Selected 'Other' platform. Please upload the participant list (.csv) when prompted.`);}
+        else{
         const meetLink = linkGenerator(classInfo.id);
 
         // Open the meeting link
@@ -1117,7 +1122,7 @@ const ProfessorDashboard = () => {
 
         // Set state to show the Upload CSV button for this specific class
         setOnlineSessionStarted(classInfo);
-        alert(`Starting ${platformName} session for ${classInfo.subject}. Meeting link opened in a new tab.`);
+        alert(`Starting ${platformName} session for ${classInfo.subject}. Meeting link opened in a new tab.`);}
 	};
     // -------------------------------------------------------------
     
