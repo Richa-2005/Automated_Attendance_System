@@ -141,7 +141,7 @@ const LocationVerification = ({ onSuccess, onError }) => {
 
 // --- QR Code Generator Component ---
 // This can also be moved to its own file if you like
-export const QRCodeGenerator = ({ classInfo, refreshRate = 5000 }) => {
+export const QRCodeGenerator = ({ classInfo, refreshRate = 10000 }) => {
   const [qrValue, setQrValue] = useState('');
   const qrRef = useRef(null);
 
