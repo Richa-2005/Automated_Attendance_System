@@ -1656,10 +1656,10 @@ const StudentDashboard = () => {
 				</div>
 
 				<CheckInModal
-					isOpen={showCheckInModal}
-					onClose={() => setShowCheckInModal(false)}
-					className={checkInClass?.subject}
-				/>
+        isOpen={showCheckInModal}
+        onClose={() => setShowCheckInModal(false)}
+        classInfo={checkInClass} 
+/>
 			</div>
 		);
 	};
