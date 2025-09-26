@@ -1069,18 +1069,17 @@ const OnlinePlatformDropdown = ({ classInfo, onSelect, onToggle, isOpen, buttonR
 const ProfessorDashboard = () => {
     const colors = { primaryBlue: 'bg-[#647FBC]', secondaryBlue: 'bg-[#91ADC8]', lightTeal: 'bg-[#AED6CF]', lightYellow: 'bg-[#FAFDD6]', primaryBlueBorder: 'border-[#647FBC]', primaryBlueText: 'text-[#647FBC]', primaryBlueHover: 'hover:bg-[#647FBC]' };
 	
-	// --- NEW STATE: Tracks the ID of the class whose dropdown is currently open ---
     const [openDropdownId, setOpenDropdownId] = useState(null);
-    // -----------------------------------------------------------------------------
-	
-	const [onlineSessionStarted, setOnlineSessionStarted] = useState(null);
-	const [showUploadBoxFor, setShowUploadBoxFor] = useState(null);
-	const [activeView, setActiveView] = useState('schedule'); // Changed default to 'schedule' to show the main change immediately
-	const [showQRModal, setShowQRModal] = useState(false);
-	const [selectedClass, setSelectedClass] = useState(null);
-	const [attendanceSession, setAttendanceSession] = useState(null);
-	const [duplicateFlags, setDuplicateFlags] = useState([]);
-	const [currentDate, setCurrentDate] = useState(new Date('September 26, 2025')); // Changed default date to match screenshot
+    const [onlineSessionStarted, setOnlineSessionStarted] = useState(null);
+    const [showUploadBoxFor, setShowUploadBoxFor] = useState(null);
+    const [activeView, setActiveView] = useState('schedule');
+    const [showQRModal, setShowQRModal] = useState(false);
+    const [selectedClass, setSelectedClass] = useState(null);
+    const [attendanceSession, setAttendanceSession] = useState(null);
+    const [duplicateFlags, setDuplicateFlags] = useState([]);
+    const [currentDate, setCurrentDate] = useState(new Date('September 26, 2025'));
+
+	const buttonRefs = useRef({});
 
 	const sidebarItems = [
 		{ key: 'profile', label: 'Profile', icon: User },
@@ -1252,9 +1251,6 @@ const ProfessorDashboard = () => {
 			}
 		};
 
-        // Ref to attach to the main button for the dropdown positioning/logic
-        const buttonRefs = useRef({});
-		
 		return (
 			<div className="p-8">
 				<h1 className="text-3xl font-bold mb-8">My Schedule</h1>
