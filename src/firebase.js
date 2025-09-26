@@ -4,15 +4,14 @@ import { getDatabase } from "firebase/database";
 
 // Your web app's Firebase configuration - this is your new config
 const firebaseConfig = {
-  apiKey: "AIzaSyDzOgXwoXXtdFr48yqZCNNBX25WEuaDmv4",
-  authDomain: "classsync-3df2c.firebaseapp.com",
-  // IMPORTANT: You need to add the databaseURL for Realtime Database
-  databaseURL: "https://classsync-3df2c-default-rtdb.firebaseio.com", 
-  projectId: "classsync-3df2c",
-  storageBucket: "classsync-3df2c.appspot.com",
-  messagingSenderId: "60398613997",
-  appId: "1:60398613997:web:4617403984ee30a18323e4"
-};
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
