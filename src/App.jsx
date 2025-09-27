@@ -2,6 +2,14 @@ import QRCodeScanner from './components/QRCodeGenerator.jsx'; // Assuming it's i
 import BiometricAuth from './components/BiometricAuth.jsx'; // Assuming it's in the same folder
 import { database } from '../src/firebase.js';
 import { ref, set, get } from "firebase/database";
+
+import MainDashboardInstructions from './components/instructionsCards/MainDash.jsx';
+import ProfessorDashboardInstructions from './components/instructionsCards/professorDash.jsx';
+import StudentDashboardBiometric from './components/instructionsCards/student_biometric.jsx';
+import StudentDashboardGPS from './components/instructionsCards/student_GPS.jsx';
+import StudentDashboardQRCode from './components/instructionsCards/student_QR.jsx';
+import StudentDashboardInitialAction from './components/instructionsCards/studentDash_initial.jsx';
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
 	Users, 
@@ -312,12 +320,18 @@ const LoginPage = ({ onLogin, showSignup, toggleSignup }) => {
 							<button onClick={toggleSignup} className={`${colors.primaryBlueText} hover:underline font-semibold`}> Sign In </button>
 						</p>
 					</div>
+					
+					<div className="mt-8 max-w-md" >
+					<MainDashboardInstructions /> {/* <--- Inserted here */}
+					</div>
+
 				</div>
 			</div>
 		);
 	}
 
 	return (
+		<div>
 		<div className="min-h-screen flex">
 			<div className={`flex-1 ${colors.lightTeal} p-12 flex flex-col justify-center`}>
 				<h1 className="text-4xl font-bold text-gray-800 mb-4">Modern University Attendance Management</h1>
@@ -352,7 +366,13 @@ const LoginPage = ({ onLogin, showSignup, toggleSignup }) => {
 						<button onClick={toggleSignup} className={`${colors.primaryBlueText} hover:underline font-semibold`}> Sign Up </button>
 					</p>
 				</div>
+				<div className="mt-8 max-w-md">
+        <MainDashboardInstructions /> {/* <--- Inserted here */}
+      </div>
 			</div>
+			
+		</div>
+		
 		</div>
 	);
 };
@@ -524,15 +544,30 @@ const CheckInModal = ({ isOpen, onClose, classInfo }) => {
 	  { title: "Biometric Verification", icon: Fingerprint, content: <BiometricAuth onSuccess={handleBiometricSuccess} /> },
 	  { title: "Success", icon: CheckCircle, content: <p className="text-center text-green-700">You are successfully marked present!</p>, actionText: "Complete", action: handleClose }
 	];
-  
+	const instructionComponents = {
+		1: StudentDashboardGPS, // Card 4 (GPS Verification)
+		2: StudentDashboardQRCode, // Card 5 (QR Scan)
+		3: StudentDashboardBiometric, // Card 6 (Biometric)
+		4: null // No instruction needed for the success step
+	};
+	
 	const currentStep = steps[step - 1];
-  
+	const CurrentInstruction = instructionComponents[step]; // Component to render
+
 	// The rest of your modal's JSX is unchanged
 	return (
 	  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
 		<div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full mx-4">
 		  <h2 className="text-2xl font-bold text-center mb-2">Check-in: {classInfo?.subject}</h2>
 		  <p className="text-center text-gray-600 mb-6">Step {step} of {steps.length}</p>
+
+		    {/* --- INSTRUCTION CARDS 4, 5, 6: Sequential Instructions --- */}
+            {CurrentInstruction && (
+                <div className="mb-6">
+                    <CurrentInstruction /> {/* <--- Inserted here */}
+                </div>
+            )}
+
 		  <div className="flex justify-center mb-6">{/* ... icon ... */}</div>
 		  <h3 className="text-lg font-semibold text-center mb-2">{currentStep.title}</h3>
 		  <div className="mb-6">{currentStep.content}</div>
@@ -632,7 +667,7 @@ const AdminDashboard = () => {
 						<p className="text-sm">{mockUniversity.email}</p>
 					</div>
 				</div>
-
+				
 				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 					{mockDepartments.map(dept => (
 						<div key={dept.id} className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow">
@@ -643,6 +678,7 @@ const AdminDashboard = () => {
 						</div>
 					))}
 				</div>
+				
 			</div>
 		</div>
 	);
@@ -1211,6 +1247,7 @@ const ProfessorDashboard = () => {
 						<p className="text-gray-600">Joined: {professorData.yearJoined}</p>
 					</div>
 				</div>
+				
 
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-8">
 					<div className="bg-gray-50 p-6 rounded-xl">
@@ -1336,6 +1373,9 @@ const ProfessorDashboard = () => {
 							</div>
 						)}
 					</div>
+					<div className="mb-8 max-w-lg mx-auto">
+					<ProfessorDashboardInstructions /> {/* <--- Inserted here */}
+				</div>
 				</div>
 				
 				{attendanceSession && (
@@ -1615,7 +1655,7 @@ const StudentDashboard = () => {
 		return (
 			<div className="p-8">
 				<h1 className="text-3xl font-bold mb-8">My Schedule</h1>
-
+			
 				<div className="bg-white rounded-xl shadow-sm p-6">
 					<DateNavigation currentDate={currentDate} onDateChange={setCurrentDate} />
 					
@@ -1641,8 +1681,12 @@ const StudentDashboard = () => {
 					Check-In Now
 				</button>
 			</div>
+			
 		</div>
 	))}
+	<div className="mb-6 max-w-lg mx-auto">
+				<StudentDashboardInitialAction /> {/* <--- Inserted here */}
+            </div>
 </div>
 				</div>
 
@@ -1765,11 +1809,16 @@ function App() {
 
 	if (!isAuthenticated) {
 		return (
+			<div>
+				
 			<LoginPage 
 				onLogin={handleLogin}
 				showSignup={showSignup}
 				toggleSignup={toggleSignup}
 			/>
+			
+			</div>
+			
 		);
 	}
 
